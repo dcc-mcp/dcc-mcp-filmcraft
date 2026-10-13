@@ -38,13 +38,37 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - run: python -m pip install playwright==1.55.0
+      - run: python -m pip install -e ".[dev]"
       - run: python -m playwright install --with-deps chromium
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: python tests/browser-e2e.py
+      - name: Download pinned official runtime
+        run: python -c "from urllib.request import urlretrieve; urlretrieve('https://github.com/storytold/filmcraft/releases/download/v0.7.2/filmcraft-web-0.7.2.zip', 'runtime.zip')"
+      - run: python tests/mcp-e2e.py --runtime-zip runtime.zip
+      - run: python tests/mcp-lifecycle.py --runtime-zip runtime.zip
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: filmcraft-browser-evidence
           path: evidence/
           retention-days: 14
+
+  python:
+    name: Core MCP / Python ${{ matrix.python }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        python: ['3.10', '3.12']
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m ruff check python tests/python
+      - run: python -m ruff format --check python tests/python
+      - run: python -m pytest
+      - run: python -m build
+      - run: dcc-mcp-filmcraft status

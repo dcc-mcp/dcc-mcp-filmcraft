@@ -1,43 +1,53 @@
 # DCC-MCP FilmCraft
 
-用于控制同一个可见 FilmCraft WebAssembly 编辑器的实验性、带类型的浏览器 SDK。
-[English](README.md)
+为同一个可见 FilmCraft WebAssembly 编辑器提供实验性的 DCC-MCP Core 适配器、真正的 MCP stdio 服务和类型化浏览器 SDK。[English](README.md)
 
-首批交付是浏览器集成组件，尚不是已发布的 Core 适配器。它调用官方
-window.filmcraft API，通过编辑器实际使用的 Rust 控制队列操作当前文档。
-不会启动另一个 CLI 编辑器实例，也不会开放本机控制网关。
+Python 适配器通过 Core 0.20.44 注册 19 个有边界的工具，使用官方 MCP SDK 提供 stdio 协议。所有调用共享一个浏览器页面，不会每次启动另一份编辑器。没有任意代码、任意宿主命令或 HTTP 控制网关。
 
-已验证的范围：
-- 创建空项目、导入有大小限制的媒体、创建和重命名序列
-- 调整视频与关联音频的播放速度，撤销、重做并读取时间线
-- 保存原生 .fcproj 字节，校验完整性后从本会话虚拟路径重新打开
-- 导出带音频的 H.264/MP4 与 WAV，查询或取消本客户端创建的任务
-- 校验来源、Window/Document/API 会话身份、项目修订号与文件/任务所有权
-- 拒绝路径穿越、重复路径、越界输入、未授权消息及重放
-- 断开连接时保留文档；超时或中断等待后不自动重放可能已执行的操作
+## 使用
 
-运行时为官方 FilmCraft v0.7.2，下载后校验 SHA-256。测试使用原创程序生成的
-校准画面和音频，保存真实编辑器截图、浏览器录像、原生项目与导出媒体，并用
-FFmpeg 验证慢放画面与音频结果。详见 [验收记录](docs/acceptance.md)。
+```sh
+python -m pip install .
+python -m playwright install chromium
+dcc-mcp-filmcraft serve --runtime-zip /path/to/filmcraft-web-0.7.2.zip
+```
 
-使用时必须独占操作：上游没有原子的“检查修订号并执行”接口。请勿在自动化
-期间手动切换或修改项目。SDK 的检查不是 UI 锁。请求发出后的超时或中断等待
-不代表宿主操作已取消；应调用 reconcile() 等待原操作明确结束。
-回执包含完整操作的各阶段与结果校验。在选中片段后中断，已完成的选择可能
-保留，但尚未发出的变速命令不会继续执行。Document/API 身份丢失或宿主不再
-可访问后，reconcile() 仍只读取本地回执，保留原会话 ID、来源和错误码，
-不会访问宿主或恢复执行权限。一旦观察到身份丢失，该客户端会永久停止执行；
-即使恢复原 API 也不会重新获得权限。失败回执不代表已执行的修改被撤销。
-浏览器路径属于虚拟文件系统，不是操作系统路径。断开连接不会删除虚拟文件。
+在 MCP 客户端中配置上述 stdio 命令。默认打开可见编辑器；`--headless` 是显式自动测试选项。`--evidence-dir /path` 记录同一个页面，`--chromium /path` 可指定已安装的兼容 Chromium。`dcc-mcp-filmcraft status` 显示协议与运行时要求。
 
-开发：npm ci --ignore-scripts；npm run check；npm test；npm run typecheck。
-真实浏览器验收：安装 Playwright 1.55.0、其 Chromium 与 FFmpeg 后运行
-python tests/browser-e2e.py。CHROMIUM_PATH 可选择兼容的已安装浏览器。
+使用[官方 FilmCraft v0.7.2 浏览器 ZIP](https://github.com/storytold/filmcraft/releases/download/v0.7.2/filmcraft-web-0.7.2.zip)，SHA-256 必须为 `48d4f48728fa6b5c028612a4b7f59a5832ff38d430c6a7bd417a2c77d75ae4f9`。适配器不会自动下载或安装运行时。需要 Python >=3.10，Core >=0.20.44,<0.21。wheel 包含浏览器 SDK、桥接脚本、tools.yaml 与工作流 skill；MCP prompts/get 可获取 filmcraft-browser。
 
-截至 2026-10-13，官方 13 个 Crafting Apps 都有浏览器 ZIP 发行文件；官网
-“12 个支持浏览器”的列表已落后于发行状态。13 个根 Cargo.toml 都声明
-MIT OR Apache-2.0，但这不是字体、素材、依赖和编解码器的完整许可审计。
-浏览器 WASM 不等于 WASI，也不意味着所有应用都提供同样的自动化接口。
+## 已实现能力
 
-此组件没有复制整个上游仓库，没有发布、合并、部署或修改凭据。
-PhotoCraft 与 PdfCraft 的现有适配器继续独立维护。
+- 创建空项目、导入授权媒体字节、创建和重命名序列
+- 对视频及关联音频变速、撤销/重做、读取真实时间线
+- 保存原生 .fcproj，校验其完整性并在同一会话重新打开
+- 原生导出 H.264/MP4（带音频）和 WAV，观察和取消本会话导出任务
+- 只有成功结束的导出才能读取；文件以 SHA-256 产物 ID 返回，每次最多读取 256 KiB
+- 捕获同一编辑器截图；保留超时/取消请求的原始回执
+- 拒绝越界参数、额外参数、任意代码、非本会话文件或任务、路径穿越、覆盖和并行修改
+
+媒体导入最多 16 MiB，单个导出最多 32 MiB，产物缓存总量最多 128 MiB。没有工具可读写任意操作系统路径或访问任意 URL。Core 调度前增加完整 JSON Schema 校验。
+
+## 会话与安全边界
+
+Playwright 的私有管道连接固定页面函数；导航后永久撤销执行权限。仅用于静态文件的 loopback 服务提供已校验的官方运行时与适配器脚本，没有命令、上传、文件浏览或代理路由。禁止跨来源网络请求。启动的是适配器自己的新浏览器页面，不会接管任意现有用户标签。
+
+浏览器派发前取消不会执行。派发后取消/超时不等于宿主取消或回滚，必须核对原始回执，不得重试修改。回执核对只使用原页面保留的闭包；页面销毁时报告结果不确定，不能在新页面重新获得权限。
+
+原生重开要求导入媒体仍在同一会话中；.fcproj 并非媒体打包文件。上游没有原子的版本比较并执行机制，工具工作时不要同时手动编辑。disconnect 只关闭类型化客户端并保留页面；终止 stdio 进程会关闭临时浏览器，请先读取所需产物。
+
+这是未发行的有边界集成，没有实现 Core 网关发现、桌面 TCP、WASI 或跨重启恢复。未创建上游 fork、新凭证、release、merge 或部署。[MCP 验收证据](docs/mcp-acceptance.md)；[浏览器边界](docs/browser-boundary.md)。
+
+## 验证
+
+```sh
+npm ci --ignore-scripts
+npm run check && npm test && npm run typecheck
+python -m pip install -e '.[dev]'
+python -m pytest
+python -m playwright install chromium
+python tests/mcp-e2e.py --runtime-zip /path/to/filmcraft-web-0.7.2.zip
+python tests/mcp-lifecycle.py --runtime-zip /path/to/filmcraft-web-0.7.2.zip
+```
+
+媒体验收需要 FFmpeg/ffprobe，使用自制校准视频和声音，独立解码验证变速后的图像和音频；不冒充主观听音验证。官方系列库存包含 13 个有浏览器发行包的 Crafting Apps，但并非每个都提供相同的 JS API。已有 PhotoCraft/PdfCraft 仓库继续复用。

@@ -2,3 +2,7 @@ node_modules/
 evidence/
 __pycache__/
 *.tgz
+.venv/
+dist/
+.pytest_cache/
+.ruff_cache/

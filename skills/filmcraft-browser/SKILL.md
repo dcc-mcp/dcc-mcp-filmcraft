@@ -29,4 +29,5 @@ filesystem gateway or credentials. Do not drive concurrent UI edits: upstream la
 atomic revision-checked commands. Cross-origin controllers are unsupported.
 
 See README.md and docs/browser-boundary.md. This is a browser SDK skill, not a
-Core tools.yaml registration or a released desktop adapter.
+desktop adapter. For Core-backed MCP stdio use the packaged Python skill at
+python/dcc_mcp_filmcraft/skills/filmcraft-browser/SKILL.md and the README MCP section.

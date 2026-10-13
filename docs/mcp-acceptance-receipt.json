@@ -1,0 +1,55 @@
+{
+  "tested_at_utc": "2026-10-13T23:21:20.505366+00:00",
+  "core_version": "0.20.44",
+  "mcp_sdk": "1.30.0",
+  "mcp_protocol": "2025-11-25",
+  "browser": "Chromium 140.0.7339.16",
+  "mcp_checks": 58,
+  "lifecycle_checks": 8,
+  "python_tests": 35,
+  "sdk_tests": 36,
+  "runtime_sha256": "48d4f48728fa6b5c028612a4b7f59a5832ff38d430c6a7bd417a2c77d75ae4f9",
+  "source_hashes": {
+    "pyproject.toml": "38b03c5ccaa6a69ddae73d90a65cb18a00ad7a29c7fbf588295afcc9fc81f92d",
+    "python/dcc_mcp_filmcraft/__init__.py": "78974f21fe9faab9b7744f1db366d324982a132fc110d5d80c2677d4c4d8103a",
+    "python/dcc_mcp_filmcraft/adapter.py": "4877764eff42fb9da88c8dfc14b6beb6903c42f89c7b8d39ce289dd8de692a10",
+    "python/dcc_mcp_filmcraft/browser.py": "6accc84bb1db14b92d4bdb4258299c57617e5cbb1687fae4ba4e157c98c512c0",
+    "python/dcc_mcp_filmcraft/catalog.py": "d260aa9988d082872f3b987d9fb20f8513e06750185deeed4dba60436fd00b8d",
+    "python/dcc_mcp_filmcraft/cli.py": "6cad780c79db5041e070345e5ef8763c60290eb5b73c0c5871097c435b76cdfb",
+    "python/dcc_mcp_filmcraft/server.py": "433e2329aeab108ee36584d4f0a72985230f6d252d60fc3db0217829aec0f7c5",
+    "python/dcc_mcp_filmcraft/skills/filmcraft-browser/SKILL.md": "731b068e1f4eed2c768f8b3b9d54a21c054b32c4e460568f4ba2d0c0468c7fad",
+    "python/dcc_mcp_filmcraft/skills/filmcraft-browser/tools.yaml": "27ac835726b001bba5cac6d147a26282cd3c7455e352d57336eac3841868d919",
+    "src/index.js": "85828c980d9dd2d4fb0df18351b50bb31731573b403670e8cb10f43877e77763",
+    "src/mcp-bridge.js": "2992bff802ccd18c7f8f429fcbefce943fcef4be94307b1cdf9bc05f69866bbb",
+    "tests/mcp-e2e.py": "82d6027539ac6d0ac28fb41f2389569f89f0c1ae66276972551f4466f72e50e2",
+    "tests/mcp-lifecycle.py": "fd2ff977b1a12a4ad3c295c2f3831cca3ba361689b6b3124f11fa4665417307d",
+    "tests/python/test_review_regressions.py": "f29222fc292260dbe7b0d8f66ac3d4700be59d5911ddedec7214493865a882e1"
+  },
+  "media_oracles": {
+    "source_frames": 12,
+    "export_frames": 24,
+    "frame_repeat_mae": 0.73046875,
+    "audio": {
+      "export.wav": {
+        "duration": 2.0,
+        "frequencyHz": 219.375,
+        "rms": 0.12479999965993492
+      },
+      "export.mp4": {
+        "duration": 2.005333333333333,
+        "frequencyHz": 219.8920265780731,
+        "rms": 0.12479348566219092
+      }
+    }
+  },
+  "evidence_hashes": {
+    "export.mp4": "3ef49a0ab528b5ed357633855269490a07accff82fd003ccabfd93d6d6ce3233",
+    "export.mp4.ffprobe.json": "d116e2a73f8aeee910b3efd310db05e46eb05d583a56b608f0d62b740c1d983e",
+    "export.wav": "179408a5c0524956ca99298faf5b595bccd5047548b2d03ad9518e74092f2bbd",
+    "export.wav.ffprobe.json": "c474885110121385bbe239612e003e7fae3db54778ddfaa3acf5a3c4228489bb",
+    "mcp-report.json": "cd2552822283fdee5c8c6e6863a4c2d621537d1888dd4f388ce75eb7ddca6106",
+    "project.fcproj": "f66e7604631e7d38494cde4cafc81dff4fdf143a26d5476bafe4c686c8b90b4c",
+    "source.mp4": "fe7daf02be4fee376a003e91ff9638bff7c6ad092659ae429443599872ab0f1a",
+    "visible-editor.png": "40b69405ee9950164851cb3865139e8a61268cae028561b4f75c34bb34ddb568"
+  }
+}

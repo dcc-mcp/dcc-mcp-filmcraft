@@ -1,12 +1,13 @@
 # DCC-MCP FilmCraft
 
-Experimental, portable typed browser SDK for the **same visible FilmCraft WebAssembly editor**.
+Experimental DCC-MCP Core adapter, genuine MCP stdio server, and typed browser SDK for the **same visible FilmCraft WebAssembly editor**.
 [中文](README.zh-CN.md)
 
-This first implementation is a browser integration component, not a released Core
-adapter or a replacement headless CLI. It exposes a bounded typed editing surface
-and an optional explicitly authorized same-origin window-message bridge. It opens
-no control socket, localhost gateway or server-side editor session.
+The Python adapter registers 19 bounded tools through DCC-MCP Core 0.20.44 and
+serves them over the official MCP SDK stdio transport. One owned browser page
+persists across agent calls. The JavaScript SDK can also be embedded directly.
+There is no arbitrary-code tool, control socket, HTTP command gateway, or hidden
+headless-CLI replacement. This is unreleased experimental integration work.
 
 ## Verified scope
 
@@ -27,6 +28,49 @@ The official JS API forwards to the visible Rust `FilmcraftApp` control queue.
 The POC uses original FFmpeg procedural calibration video/audio, not third-party
 footage. See [acceptance evidence](docs/acceptance.md) and
 [browser trust boundary and limitations](docs/browser-boundary.md).
+
+## Run the Core-backed MCP server
+
+```sh
+python -m pip install .
+python -m playwright install chromium
+# Download the official runtime ZIP linked below. The adapter verifies its exact hash.
+dcc-mcp-filmcraft serve --runtime-zip /path/to/filmcraft-web-0.7.2.zip
+```
+
+Configure an MCP client to launch that command over **stdio**. The default opens
+one visible browser editor. `--headless` is an explicit automation/testing option;
+`--evidence-dir /path` records that same page. `--chromium /path/to/chromium` can
+select an installed compatible runtime. `dcc-mcp-filmcraft status` prints the
+pinned runtime URL/hash and transport contract without opening a browser.
+
+[Official FilmCraft v0.7.2 web ZIP](https://github.com/storytold/filmcraft/releases/download/v0.7.2/filmcraft-web-0.7.2.zip).
+No automatic runtime download or install occurs. Python >=3.10; Core >=0.20.44,<0.21.
+The wheel includes the exact JavaScript SDK/bridge, `tools.yaml` and workflow skill;
+MCP clients can retrieve the `filmcraft-browser` prompt. Full JSON Schema validation
+supplements Core's dispatcher, including regex and size restrictions.
+
+Tools cover inspect, project creation, media import, sequence creation/rename,
+retiming, undo/redo, native save/reopen, export jobs/cancellation, bounded artifact
+chunks, screenshot, reconciliation and disconnect. Imports use authorized base64
+bytes (<=16 MiB). Saves/exports return SHA-256 artifact IDs; retrieve chunks through
+`filmcraft_read_artifact` (<=256 KiB each), never arbitrary OS paths. Native exports
+must reach successful terminal state before readback.
+
+Browser control uses Playwright's inherited private pipe and a retained function
+handle in the original page realm. A loopback-only **static asset server** serves
+only the hash-verified official runtime and adapter scripts; it has no commands,
+uploads, filesystem browsing, proxy or cross-origin access. Navigation permanently
+revokes execution. Reconciliation uses the original retained closure, never a
+replacement tab; destroyed realms report indeterminate outcomes. Cancellation
+before browser dispatch does not execute; cancellation/timeout after dispatch
+retains the original receipt and never queues or retries a mutation.
+
+This adapter owns a newly opened browser page; it does not attach to an arbitrary
+existing user tab. `disconnect` preserves the page and virtual files. Ending the
+stdio process closes its disposable browser, so retrieve necessary artifacts first.
+Core gateway discovery, desktop TCP, restart recovery and WASI are not implemented.
+See [MCP acceptance](docs/mcp-acceptance.md).
 
 ## Use in the editor's origin
 
@@ -79,4 +123,4 @@ has the same API. Browser `wasm32-unknown-unknown` is distinct from WASI. Licens
 fonts/assets/dependencies and codecs require their own review.
 
 No upstream fork, release, merge, deployment or new credentials are created by
-this SDK. Existing PhotoCraft/PdfCraft adapters remain separate repositories.
+this integration. Existing PhotoCraft/PdfCraft adapters remain separate repositories.
