@@ -46,7 +46,7 @@ test('late selection receipt covers the requested retime, not just selection',as
   await assert.rejects(c.setPlaybackRate({sequence:2,clip:3,percent:50}),{code:'TIMEOUT'});
   assert.deepEqual(c.reconcile(),{settled:false,uncertain:true});
   finish({selection:[3]});await new Promise(r=>setTimeout(r,0));
-  assert.deepEqual(c.reconcile(),{settled:true,uncertain:false,ok:true,result:{speed:0.5},error:undefined});
+  assert.deepEqual(c.reconcile(),{settled:true,uncertain:false,sessionId:SESSION,origin:ORIGIN,ok:true,result:{speed:0.5},error:undefined,code:undefined});
   assert.equal(f.calls.filter(([id])=>id==='clip.speedDuration').length,1);
 });
 test('abort during selection does not dispatch retime or claim successful retime',async()=>{
@@ -77,4 +77,65 @@ test('late failed import receipt includes validation and preserves bookkeeping',
   f.project.revision=3;finish({items:[],errors:['unsupported media']});await new Promise(r=>setTimeout(r,0));
   const receipt=c.reconcile();assert.equal(receipt.ok,false);assert.match(receipt.error,/unsupported media/);
   await c.renameItem(2,'Still usable');
+});
+for (const identity of ['document', 'filmcraft', 'origin', 'inaccessible']) {
+  test(`late mutation receipt remains local after ${identity} loss and cannot revive the session`, async () => {
+    const f=fixture(), c=await connect(f,{timeoutMs:10}); let finish;
+    const original={document:f.host.document,filmcraft:f.host.filmcraft,location:f.host.location};
+    f.handlers.set('clip.rename',()=>new Promise(resolve=>{finish=()=>{f.project.name='Applied';resolve({renamed:true});};}));
+    await assert.rejects(c.renameItem(2,'Applied'),{code:'TIMEOUT'});
+    if(identity==='origin') f.host.location={origin:'https://other.example'};
+    else if(identity==='inaccessible') Object.defineProperty(f.host,'location',{configurable:true,get(){throw Error('inaccessible');}});
+    else f.host[identity]={};
+    // Reconciliation does not even inspect host properties while work is pending.
+    assert.deepEqual(c.reconcile(),{settled:false,uncertain:true});
+    finish(); await new Promise(r=>setTimeout(r,0));
+    // An inaccessible host must not prevent reading the now-local receipt.
+    for (const name of ['location','document','filmcraft']) Object.defineProperty(f.host,name,{configurable:true,get(){throw Error('receipt read host');}});
+    c.sessionId='changed-public-session';
+    const receipt=c.reconcile();
+    assert.equal(receipt.settled,true);assert.equal(receipt.uncertain,false);assert.equal(receipt.ok,false);
+    assert.equal(receipt.code,'SESSION');assert.equal(receipt.sessionId,SESSION);assert.equal(receipt.origin,ORIGIN);
+    assert.match(receipt.error,/editor/);assert.equal(f.project.name,'Applied');
+    for (const [name,value] of Object.entries(original)) Object.defineProperty(f.host,name,{configurable:true,writable:true,value});
+    let filesCalls=0;original.filmcraft.files=()=>{filesCalls++;return [];};
+    const callCount=f.calls.length;
+    await assert.rejects(c.inspect(),{code:'SESSION'});
+    await assert.rejects(c.renameItem(2,'Replay'),{code:'SESSION'});
+    await assert.rejects(c.save('after-loss'),{code:'SESSION'});
+    await assert.rejects(c.exportVideo({name:'after-loss',sequence:2}),{code:'SESSION'});
+    await assert.rejects(c.readExport('/dcc/no-export.mp4'),{code:'SESSION'});
+    assert.throws(()=>c.info(),{code:'SESSION'});
+    await assert.rejects(c.close(),{code:'SESSION'});
+    assert.equal(filesCalls,0);assert.equal(f.calls.length,callCount);
+    assert.equal(f.calls.filter(([id])=>id==='clip.rename').length,1);
+  });
+}
+test('identity loss observed by a read permanently revokes execution after restoration',async()=>{
+  const f=fixture(),c=await connect(f),document=f.host.document;f.host.document={};
+  await assert.rejects(c.inspect(),{code:'SESSION'});f.host.document=document;
+  assert.deepEqual(c.reconcile(),{settled:true,uncertain:false});
+  await assert.rejects(c.inspect(),{code:'SESSION'});
+});
+test('session failure without a timeout still retains its local mutation receipt',async()=>{
+  const f=fixture(),c=await connect(f);let finish;
+  f.handlers.set('clip.rename',()=>new Promise(r=>{finish=r}));const work=c.renameItem(2,'Applied');
+  while(!finish)await new Promise(r=>setTimeout(r,0));f.host.document={};finish({renamed:true});
+  await assert.rejects(work,{code:'SESSION'});const receipt=c.reconcile();
+  assert.equal(receipt.ok,false);assert.equal(receipt.code,'SESSION');assert.equal(receipt.sessionId,SESSION);
+});
+test('identity replacement before scheduled dispatch is refused without calling the old API',async()=>{
+  const f=fixture(),c=await connect(f),count=f.calls.length;
+  const work=c.renameItem(2,'Never dispatched');f.host.filmcraft={};
+  await assert.rejects(work,{code:'SESSION'});assert.equal(f.calls.length,count);
+});
+test('revocation during late save readback prevents the final host query after API restoration',async()=>{
+  const f=fixture();let finish;
+  f.host.filmcraft.readFile=()=>new Promise(r=>{finish=r});
+  const c=await connect(f,{timeoutMs:10}),original=f.host.filmcraft;
+  await assert.rejects(c.save('late-read'),{code:'TIMEOUT'});
+  f.host.filmcraft={};await assert.rejects(c.inspect(),{code:'SESSION'});
+  f.host.filmcraft=original;const count=f.calls.length;finish(new Uint8Array([1,2,3]));
+  await new Promise(r=>setTimeout(r,0));assert.equal(f.calls.length,count);
+  assert.equal(c.reconcile().code,'SESSION');
 });

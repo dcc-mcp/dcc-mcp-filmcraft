@@ -38,11 +38,14 @@ with tempfile.TemporaryDirectory(prefix='filmcraft-e2e-') as td:
     site = work / 'filmcraft-web-0.7.2'
     shutil.copyfile(ROOT / 'src' / 'index.js', site / 'dcc-sdk.js')
     shutil.copyfile(ROOT / 'tests' / 'browser-acceptance.js', site / 'dcc-acceptance.js')
+    shutil.copyfile(ROOT / 'tests' / 'browser-lifecycle.js', site / 'dcc-lifecycle.js')
+    lifecycle_html = (site / 'index.html').read_text().replace('</body>', '<script type="module" src="./dcc-lifecycle.js"></script></body>')
+    (site / 'lifecycle.html').write_text(lifecycle_html)
     html = (site / 'index.html').read_text().replace('</body>', '<script type="module" src="./dcc-acceptance.js"></script></body>')
     (site / 'test.html').write_text(html)
     subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-f','lavfi','-i','testsrc2=size=160x90:rate=12','-f','lavfi','-i','sine=frequency=440:sample_rate=48000','-t','1','-c:v','libx264','-threads','1','-pix_fmt','yuv420p','-c:a','aac','-b:a','64k','-movflags','+faststart',str(site/'poc-source.mp4')],check=True)
     shutil.copyfile(site/'poc-source.mp4', args.output/'poc-source.mp4')
-    names = {'project.fcproj','export.mp4','export.wav','visible-editor.png','before-editor.png','browser-report.json'}
+    names = {'project.fcproj','export.mp4','export.wav','visible-editor.png','before-editor.png','browser-report.json','lifecycle-report.json'}
     class Handler(SimpleHTTPRequestHandler):
         def end_headers(self):
             self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
@@ -81,8 +84,23 @@ with tempfile.TemporaryDirectory(prefix='filmcraft-e2e-') as td:
             report['runtimeZipSha256']=SHA256
             report['sdkSha256']=hashlib.sha256((ROOT/'src/index.js').read_bytes()).hexdigest()
             (args.output/'browser-report.json').write_text(json.dumps(report,indent=2))
-            context.close(); browser.close()
+            context.close()
             assert report['passed'], json.dumps(report,indent=2)
+            # Separate clean browser context: preserve the media/export proof above.
+            lifecycle_context = browser.new_context(viewport={'width':1280,'height':800}, record_video_dir=str(args.output/'lifecycle-recording'))
+            lifecycle_page = lifecycle_context.new_page()
+            lifecycle_page.on('console', lambda msg: logs.append({'scope':'lifecycle','type':msg.type,'text':msg.text}))
+            lifecycle_page.on('pageerror', lambda error: logs.append({'scope':'lifecycle','type':'pageerror','text':str(error)}))
+            lifecycle_page.goto(base + '/lifecycle.html?empty&norecover&fresh&cpu&webgl')
+            lifecycle_page.wait_for_function("document.title.startsWith('PASS ') || document.title.startsWith('FAIL ')", timeout=180000)
+            lifecycle_page.screenshot(path=str(args.output/'lifecycle-page.png'))
+            lifecycle=json.loads((args.output/'lifecycle-report.json').read_text())
+            lifecycle['browserVersion']=browser.version
+            lifecycle['runtimeZipSha256']=SHA256
+            lifecycle['sdkSha256']=report['sdkSha256']
+            (args.output/'lifecycle-report.json').write_text(json.dumps(lifecycle,indent=2))
+            lifecycle_context.close(); browser.close()
+            assert lifecycle['passed'], json.dumps(lifecycle,indent=2)
         for name in ['export.mp4','export.wav']:
             raw=subprocess.check_output(['ffprobe','-v','error','-show_format','-show_streams','-of','json',str(args.output/name)],text=True)
             info=json.loads(raw); (args.output/(name+'.ffprobe.json')).write_text(raw)
@@ -98,15 +116,20 @@ with tempfile.TemporaryDirectory(prefix='filmcraft-e2e-') as td:
         assert len(source_rgb)//stride==12 and len(exported_rgb)//stride==24
         expected=sum(abs(exported_rgb[i]-source_rgb[(i//stride//2)*stride+i%stride]) for i in range(len(exported_rgb)))/len(exported_rgb)
         assert expected < 18, f'output frames must match each source frame repeated twice: MAE={expected}'
-        audio_raw=subprocess.check_output(['ffmpeg','-v','error','-i',str(args.output/'export.wav'),'-ac','1','-ar','48000','-f','f32le','-'])
-        samples=array.array('f');samples.frombytes(audio_raw)
-        middle=samples[9600:-9600]
-        crossings=sum(a<=0<b for a,b in zip(middle,middle[1:]))
-        frequency=crossings/(len(middle)/48000)
-        rms=math.sqrt(sum(x*x for x in middle)/len(middle))
-        assert 200 < frequency < 240 and rms>0.02, f'audio must be non-silent and half-speed: {frequency} Hz, RMS={rms}'
-        (args.output/'media-oracles.json').write_text(json.dumps({'sourceFrames':12,'exportFrames':24,'retime':0.5,'frameRepeatMeanAbsoluteError':expected,'audioFrequencyHz':frequency,'audioRms':rms,'subjectiveListeningTested':False},indent=2))
-        print(json.dumps({'passed':True,'checks':len(report['checks']),'browser':report['browserVersion'],'output':str(args.output)}))
+        def audio_oracle(name):
+            audio_raw=subprocess.check_output(['ffmpeg','-v','error','-i',str(args.output/name),'-ac','1','-ar','48000','-f','f32le','-'])
+            samples=array.array('f');samples.frombytes(audio_raw)
+            duration=len(samples)/48000
+            assert 1.95 <= duration <= 2.1, f'{name}: decoded audio duration must match the retimed two-second sequence: {duration}'
+            middle=samples[9600:-9600]
+            crossings=sum(a<=0<b for a,b in zip(middle,middle[1:]))
+            frequency=crossings/(len(middle)/48000)
+            rms=math.sqrt(sum(x*x for x in middle)/len(middle))
+            assert 200 < frequency < 240 and rms>0.02, f'{name}: audio must be non-silent and half-speed: {frequency} Hz, RMS={rms}'
+            return {'decodedDurationSeconds':duration,'audioFrequencyHz':frequency,'audioRms':rms,'subjectiveListeningTested':False}
+        audio={name:audio_oracle(name) for name in ['export.wav','export.mp4']}
+        (args.output/'media-oracles.json').write_text(json.dumps({'sourceFrames':12,'exportFrames':24,'retime':0.5,'frameRepeatMeanAbsoluteError':expected,'audioFrequencyHz':audio['export.wav']['audioFrequencyHz'],'audioRms':audio['export.wav']['audioRms'],'audioByExport':audio,'subjectiveListeningTested':False},indent=2))
+        print(json.dumps({'passed':True,'checks':len(report['checks'])+len(lifecycle['checks']),'mediaChecks':len(report['checks']),'lifecycleChecks':len(lifecycle['checks']),'browser':report['browserVersion'],'output':str(args.output)}))
     finally:
         (args.output/'browser-console.json').write_text(json.dumps(logs,indent=2))
         server.shutdown();server.server_close();thread.join(timeout=3)

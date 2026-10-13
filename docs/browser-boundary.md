@@ -2,8 +2,9 @@
 
 The API is an opt-in integration in an editor page controlled by its host. A
 caller supplies the exact expected HTTP(S) origin. The SDK retains the Window,
-Document and official API object identity; navigation/API replacement invalidates
-it. Its random session identifier is ephemeral correlation, not a persistent
+Document and official API object identity; observed navigation, inaccessible host
+state or API replacement permanently revokes execution for that client. Restoring
+the old objects does not restore authority. Its random session identifier is ephemeral correlation, not a persistent
 credential. No secrets, OAuth grants, OS paths or localhost command gateway exist.
 
 The optional postMessage endpoint is installed only for an explicit controller
@@ -28,7 +29,13 @@ controller and leave the UI idle while it runs. Do not claim transactional safet
 
 Mutations are not automatically retried. A timeout or AbortSignal stops waiting,
 not the host operation. The original operation receipt and completion bookkeeping
-remain alive. `reconcile()` cannot clear uncertainty based on an unrelated query.
+remain alive. `reconcile()` reads only local receipt state, even after the host
+becomes inaccessible or its Document/API changes. Settled receipts include their
+original session ID and origin plus a structured error code; public session-field
+changes cannot rewrite that provenance. Reading a receipt neither contacts the
+host nor restores revoked authority. A `SESSION` error does not prove that a host
+mutation failed to apply or was rolled back. `reconcile()` cannot clear uncertainty
+based on an unrelated query.
 The receipt covers the complete public operation, including import validation and
 both selection and retiming. A timeout continues the original operation; abort
 between phases leaves any completed selection in place and prevents retiming.

@@ -18,7 +18,10 @@ headless CLI instance for a request about the visible browser document.
 5. Export to a fresh owned path, observe jobs to completion, validate errors and
    retrieve bytes. Verify frame/audio content rather than only nonzero file size.
 6. For timeout/abort, never replay. Reconcile the original receipt. Cancel only an
-   owned export job and wait for terminal state before closing.
+   owned export job and wait for terminal state before closing. Reconciliation is
+   local even after Document/API loss; keep the original session/origin receipt.
+   Observed identity loss permanently revokes this client, even after restoring the
+   old API. A failed receipt does not establish host cancellation or rollback.
 7. Close the SDK and optional message bridge; preserve the user's document/files.
 
 Do not expose arbitrary window.filmcraft.execute/request, a public control port,

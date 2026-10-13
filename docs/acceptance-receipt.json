@@ -1,16 +1,18 @@
 {
-  "tested_at_utc": "2026-10-13T17:57:24.689Z",
+  "tested_at_utc": "2026-10-13T18:39:33.999Z",
   "browser": "140.0.7339.16",
-  "browser_checks": 42,
-  "unit_tests": 28,
+  "browser_checks": 55,
+  "unit_tests": 36,
   "runtime_url": "https://github.com/storytold/filmcraft/releases/download/v0.7.2/filmcraft-web-0.7.2.zip",
   "runtime_sha256": "48d4f48728fa6b5c028612a4b7f59a5832ff38d430c6a7bd417a2c77d75ae4f9",
   "source_files": {
-    "src/index.js": "47f1c572bd89cf4d8a164fcf46e4e180c1cdba3924268d6ab5c36162ad4bf679",
-    "src/index.d.ts": "4c120a17a548f364eb4f89f0cd17f23b0d62c489371f68270415ae7fd485aa5c",
-    "tests/client.test.js": "7e089458e7f7bd401ce5d36337a4e879d90d845db6ebb59765bc0c6eecc53ee8",
+    "src/index.js": "85828c980d9dd2d4fb0df18351b50bb31731573b403670e8cb10f43877e77763",
+    "src/index.d.ts": "6f926eba6b2858a6a98d99c6dee81b8c6156a94b42db0e82b8078d27bf6e5077",
+    "tests/client.test.js": "5bddfa0bfe7e45039a728cd6ab028752754f8e3f1cd04ddb07658b1df94e612f",
+    "tests/types.ts": "0a62af302b02be4fe7d372573f83ce762ed927be1f084acd1a55f4cefd08d6e1",
     "tests/browser-acceptance.js": "cff9de021a01e52626d7045b2bc0232c8933a151585c5f3dcd629354d061d335",
-    "tests/browser-e2e.py": "ae432ee56f8281c5d70af9f45af246576563633893e878fde272219174df7dbd"
+    "tests/browser-lifecycle.js": "e766b341d710ceeee31934c19ca6636233516bc00c7d233e056adc4be877ef42",
+    "tests/browser-e2e.py": "7789beaf5c97847be4c404e72069fba1c68d7cf90e1223aa35b3c09bbbdd11b3"
   },
   "media_oracles": {
     "sourceFrames": 12,
@@ -19,6 +21,20 @@
     "frameRepeatMeanAbsoluteError": 0.73046875,
     "audioFrequencyHz": 219.375,
     "audioRms": 0.12479999965993492,
+    "audioByExport": {
+      "export.wav": {
+        "decodedDurationSeconds": 2.0,
+        "audioFrequencyHz": 219.375,
+        "audioRms": 0.12479999965993492,
+        "subjectiveListeningTested": false
+      },
+      "export.mp4": {
+        "decodedDurationSeconds": 2.005333333333333,
+        "audioFrequencyHz": 219.8920265780731,
+        "audioRms": 0.12479348566219092,
+        "subjectiveListeningTested": false
+      }
+    },
     "subjectiveListeningTested": false
   },
   "checks": [
@@ -106,6 +122,8 @@
       "detail": {
         "settled": true,
         "uncertain": false,
+        "sessionId": "dcc-filmcraft-acceptance-20261013",
+        "origin": "http://127.0.0.1:33519",
         "ok": true,
         "result": null
       }
@@ -234,10 +252,10 @@
           "bytes": 157887,
           "frames": 24,
           "path": "/dcc/dcc-filmcraft-acceptance-20261013/browser-h264.mp4",
-          "render_fps": 53.00704551980034,
-          "seconds": 0.45277
+          "render_fps": 61.73077665033373,
+          "seconds": 0.388785
         },
-        "status": "Done in 0.5s",
+        "status": "Done in 0.4s",
         "total": 24
       }
     },
@@ -261,8 +279,8 @@
           "bytes": 384044,
           "frames": 96000,
           "path": "/dcc/dcc-filmcraft-acceptance-20261013/browser-wav.wav",
-          "render_fps": 5936920.222634508,
-          "seconds": 0.01617
+          "render_fps": 12990527.740189446,
+          "seconds": 0.00739
         },
         "status": "Done in 0.0s",
         "total": 2
@@ -277,13 +295,13 @@
       "name": "owned export cancellation reaches terminal cancelled state",
       "ok": true,
       "detail": {
-        "done": 13,
+        "done": 10,
         "etaSeconds": null,
         "finished": true,
         "id": 3,
         "label": "Export cancelled-export.mp4",
         "offlineMedia": [],
-        "progress": 0.5416666865348816,
+        "progress": 0.4166666567325592,
         "result": {
           "error": "cancelled"
         },
@@ -330,8 +348,11 @@
       "detail": {
         "settled": true,
         "uncertain": false,
+        "sessionId": "dcc-filmcraft-acceptance-20261013",
+        "origin": "http://127.0.0.1:33519",
         "ok": false,
-        "error": "BridgeError: [\"/files/bad.mp4: media: unsupported media: bad.mp4: unrecognised format\"]"
+        "error": "BridgeError: [\"/files/bad.mp4: media: unsupported media: bad.mp4: unrecognised format\"]",
+        "code": "IMPORT"
       }
     },
     {
@@ -348,8 +369,11 @@
       "detail": {
         "settled": true,
         "uncertain": false,
+        "sessionId": "dcc-filmcraft-acceptance-20261013",
+        "origin": "http://127.0.0.1:33519",
         "ok": false,
-        "error": "BridgeError: selection may have applied; retiming was not dispatched"
+        "error": "BridgeError: selection may have applied; retiming was not dispatched",
+        "code": "CANCELLED"
       }
     },
     {
@@ -367,6 +391,122 @@
     {
       "name": "cleanup preserves visible user document",
       "ok": true
+    },
+    {
+      "name": "official mutation wait times out",
+      "ok": true,
+      "detail": {
+        "code": "TIMEOUT",
+        "message": "request may still apply; it was not replayed"
+      }
+    },
+    {
+      "name": "real official project changed before receipt release",
+      "ok": true
+    },
+    {
+      "name": "pending receipt readable after API replacement",
+      "ok": true,
+      "detail": {
+        "settled": false,
+        "uncertain": true
+      }
+    },
+    {
+      "name": "pending reconciliation does not execute host commands",
+      "ok": true
+    },
+    {
+      "name": "late receipt reports session loss without claiming cancellation",
+      "ok": true,
+      "detail": {
+        "settled": true,
+        "uncertain": false,
+        "sessionId": "dcc-filmcraft-lifecycle-20261013",
+        "origin": "http://127.0.0.1:33519",
+        "ok": false,
+        "error": "BridgeError: editor navigated or API instance changed",
+        "code": "SESSION"
+      }
+    },
+    {
+      "name": "late receipt keeps original session and origin provenance",
+      "ok": true,
+      "detail": {
+        "settled": true,
+        "uncertain": false,
+        "sessionId": "dcc-filmcraft-lifecycle-20261013",
+        "origin": "http://127.0.0.1:33519",
+        "ok": false,
+        "error": "BridgeError: editor navigated or API instance changed",
+        "code": "SESSION"
+      }
+    },
+    {
+      "name": "settled reconciliation and revoked continuation execute no host commands",
+      "ok": true
+    },
+    {
+      "name": "restoring the old API does not restore read authority",
+      "ok": true,
+      "detail": {
+        "code": "SESSION",
+        "message": "editor navigated or API instance changed"
+      }
+    },
+    {
+      "name": "restoring the old API does not restore mutation authority",
+      "ok": true,
+      "detail": {
+        "code": "SESSION",
+        "message": "editor navigated or API instance changed"
+      }
+    },
+    {
+      "name": "revoked save refuses before virtual-file access",
+      "ok": true,
+      "detail": {
+        "code": "SESSION",
+        "message": "editor navigated or API instance changed"
+      }
+    },
+    {
+      "name": "revoked close does not query host jobs",
+      "ok": true,
+      "detail": {
+        "code": "SESSION",
+        "message": "editor navigated or API instance changed"
+      }
+    },
+    {
+      "name": "timed-out mutation is never replayed or allowed file access after restoration",
+      "ok": true,
+      "detail": {
+        "executeCalls": 4,
+        "mutationCalls": 1,
+        "filesCalls": 0
+      }
+    },
+    {
+      "name": "failed receipt does not imply rollback of the applied mutation",
+      "ok": true,
+      "detail": {
+        "activeSequence": null,
+        "dirty": false,
+        "name": "Applied before identity loss",
+        "path": null,
+        "revision": 2,
+        "root": {
+          "children": [],
+          "id": 0,
+          "name": "Applied before identity loss"
+        },
+        "sourceItem": null
+      }
     }
-  ]
+  ],
+  "browser_check_groups": {
+    "media": 42,
+    "lifecycle": 13
+  }
 }

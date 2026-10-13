@@ -48,7 +48,10 @@ concurrently: upstream has no atomic compare-and-execute revision API. The SDK
 provides conservative checks, not a lock on the UI. A timeout/abort after dispatch
 may still apply; call `reconcile()` until the original operation settles. Receipts
 include all phases and validation. Aborting after selection can leave selection
-changed, but prevents a retime that has not yet dispatched.
+changed, but prevents a retime that has not yet dispatched. Reconciliation stays
+local and readable after Document/API loss, with the original session/origin and
+error code. Once identity loss is observed, that client's execution remains revoked
+even if the old API is restored. A failed receipt does not imply rollback.
 
 ## Development
 

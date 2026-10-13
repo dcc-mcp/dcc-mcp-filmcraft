@@ -14,7 +14,7 @@ const required = ['execute', 'commands', 'inspect', 'info', 'files', 'readFile',
 
 /** No TCP, fetch proxy, persistent credential or arbitrary execute method is exposed. */
 export class FilmCraftClient {
-  #host; #document; #api; #origin; #closed = false; #busy = false; #uncertain = false;
+  #host; #document; #api; #origin; #sessionId; #revoked = null; #closed = false; #busy = false; #uncertain = false;
   #commands = new Set(); #project; #root; #jobs = new Set(); #saved = new Map(); #pending = null; #reserved = new Set();
   static async connect({ window: host = window, expectedOrigin, sessionId = crypto.randomUUID(), timeoutMs = 15000 } = {}) {
     if (typeof expectedOrigin !== 'string' || new URL(expectedOrigin).origin !== expectedOrigin || !/^https?:/.test(expectedOrigin)) fail('ORIGIN', 'an exact HTTP(S) origin is required');
@@ -35,13 +35,21 @@ export class FilmCraftClient {
   }
   constructor(host, api, origin, sessionId, timeoutMs) {
     this.#host = host; this.#document = host.document; this.#api = api; this.#origin = origin;
-    this.sessionId = sessionId; this.timeoutMs = timeoutMs; this.#root = `/dcc/${sessionId}`;
+    this.#sessionId = sessionId; this.sessionId = sessionId; this.timeoutMs = timeoutMs; this.#root = `/dcc/${sessionId}`;
   }
   #guard() {
     if (this.#closed) fail('CLOSED', 'client is closed');
+    if (this.#revoked) fail('SESSION', this.#revoked);
     try {
-      if (this.#host.location.origin !== this.#origin || this.#host.document !== this.#document || this.#host.filmcraft !== this.#api) fail('SESSION', 'editor navigated or API instance changed');
-    } catch (e) { if (e instanceof BridgeError) throw e; fail('SESSION', 'editor session is no longer accessible'); }
+      if (this.#host.location.origin !== this.#origin || this.#host.document !== this.#document || this.#host.filmcraft !== this.#api) {
+        this.#revoked = 'editor navigated or API instance changed';
+        fail('SESSION', this.#revoked);
+      }
+    } catch (e) {
+      this.#revoked ||= 'editor session is no longer accessible';
+      if (e instanceof BridgeError) throw e;
+      fail('SESSION', this.#revoked);
+    }
   }
   async #run(operation, mutation, signal) {
     this.#guard();
@@ -50,8 +58,8 @@ export class FilmCraftClient {
     if (signal?.aborted) fail('CANCELLED', 'cancelled before dispatch; not run');
     this.#busy = true;
     let timer, abort;
-    const pending = Promise.resolve().then(operation);
-    const receipt = { settled: false, ok: false, value: undefined };
+    const pending = Promise.resolve().then(() => { this.#guard(); return operation(); });
+    const receipt = { sessionId: this.#sessionId, origin: this.#origin, settled: false, ok: false, value: undefined };
     pending.then(value => { receipt.settled = true; receipt.ok = true; receipt.value = value; }, error => { receipt.settled = true; receipt.value = error; });
     if (mutation) this.#pending = receipt;
     try {
@@ -61,6 +69,9 @@ export class FilmCraftClient {
         signal?.addEventListener('abort', abort, { once: true });
       })]);
       this.#guard(); return value;
+    } catch (e) {
+      if (mutation && e?.code === 'SESSION') this.#uncertain = true;
+      throw e;
     } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); this.#busy = false; }
   }
   #query(id, params = {}) {
@@ -78,6 +89,7 @@ export class FilmCraftClient {
       const result = await this.#api.execute(id, params);
       this.#guard();
       const value = await completed(result);
+      this.#guard();
       const after = await this.#api.execute('project.inspect', {});
       this.#guard();
       this.#project = key(after);
@@ -135,6 +147,7 @@ export class FilmCraftClient {
   async undo(options = {}) { return this.#mutate('edit.undo', {}, options); }
   async redo(options = {}) { return this.#mutate('edit.redo', {}, options); }
   async save(name, options = {}) {
+    this.#guard();
     const path = ownedPath(this.#root, name, 'fcproj');
     if (this.#saved.has(path) || this.#api.files().some((f) => f.path === path)) fail('EXISTS', 'refusing to overwrite a virtual file');
     return this.#mutate('file.saveAs', { path }, options, async () => {
@@ -159,6 +172,7 @@ export class FilmCraftClient {
   }
 
   async exportVideo({ name, sequence, format = 'h264' }, options = {}) {
+    this.#guard();
     integer(sequence, 1, Number.MAX_SAFE_INTEGER, 'sequence');
     if (!['h264', 'wav'].includes(format)) fail('UNSUPPORTED', 'POC exports only H.264/MP4 and WAV');
     const path = ownedPath(this.#root, name, format === 'wav' ? 'wav' : 'mp4');
@@ -175,17 +189,20 @@ export class FilmCraftClient {
     return this.#query('jobs.cancel', { job });
   }
   async readExport(path) {
+    this.#guard();
     if (typeof path !== 'string' || !this.#reserved.has(path) || !path.startsWith(`${this.#root}/`) || !/\.(mp4|wav)$/.test(path) || path.includes('..')) fail('SESSION', 'path is outside this session');
     const record = this.#api.files().find((f) => f.path === path);
     if (!record || record.size > 32 * 1024 * 1024) fail('LIMIT', 'export missing or over 32 MiB');
     return this.#run(async () => { const bytes = await this.#api.readFile(path); if (!ArrayBuffer.isView(bytes) || Object.prototype.toString.call(bytes) !== '[object Uint8Array]' || bytes.byteLength > 32 * 1024 * 1024) fail('LIMIT', 'invalid or oversized export bytes'); return new Uint8Array(bytes); }, false);
   }
   reconcile() {
-    this.#guard();
-    if (!this.#uncertain) return { settled: true, uncertain: false };
+    // Inspect only local state, even after navigation or API loss. Reading a
+    // receipt never reacquires execution authority or cancels a host operation.
+    if (this.#closed && !this.#uncertain) fail('CLOSED', 'client is closed');
+    if (!this.#uncertain) return { settled: !this.#busy, uncertain: false };
     if (!this.#pending?.settled) return { settled: false, uncertain: true };
     const r = this.#pending; this.#uncertain = false;
-    return { settled: true, uncertain: false, ok: r.ok, result: r.ok ? r.value : undefined, error: r.ok ? undefined : String(r.value) };
+    return { settled: true, uncertain: false, sessionId: r.sessionId, origin: r.origin, ok: r.ok, result: r.ok ? r.value : undefined, error: r.ok ? undefined : String(r.value), code: r.ok ? undefined : r.value?.code || 'HOST' };
   }
   async close() {
     this.#guard();

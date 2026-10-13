@@ -5,6 +5,9 @@ async function check() {
   await sdk.createSequence({ name:'Timeline', fromItem:imported.items[0] });
   const project = await sdk.inspect();
   if (project.activeSequence !== null) await sdk.exportVideo({name:'result',sequence:project.activeSequence,format:'h264'});
+  const receipt = sdk.reconcile();
+  const provenance: [string | undefined, string | undefined, string | undefined] = [receipt.sessionId, receipt.origin, receipt.code];
+  void provenance;
   const saved = await sdk.save('native'); await sdk.reopen(saved.path);
   // @ts-expect-error unsupported format
   await sdk.exportVideo({name:'result',sequence:2,format:'arbitrary'});

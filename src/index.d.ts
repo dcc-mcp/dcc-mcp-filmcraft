@@ -4,7 +4,7 @@ export interface ProjectState { name: string; path?: string | null; revision: nu
 export interface SequenceState { id: number; name: string; durationFrames: number; video: unknown[]; audio: unknown[]; [key: string]: unknown }
 export interface ExportJob { id: number; finished: boolean; error?: string; [key: string]: unknown }
 export interface NativeSave { path: string; bytes: Uint8Array }
-export interface Reconciliation { settled: boolean; uncertain: boolean; ok?: boolean; result?: unknown; error?: string }
+export interface Reconciliation { settled: boolean; uncertain: boolean; sessionId?: string; origin?: string; ok?: boolean; result?: unknown; error?: string; code?: string }
 export class FilmCraftClient {
   private constructor();
   readonly sessionId: string;
