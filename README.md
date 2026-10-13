@@ -46,7 +46,9 @@ const job = await sdk.exportVideo({name: 'my-film', sequence: project.activeSequ
 Use one controller while the operation runs. Do not switch or edit projects
 concurrently: upstream has no atomic compare-and-execute revision API. The SDK
 provides conservative checks, not a lock on the UI. A timeout/abort after dispatch
-may still apply; call `reconcile()` until the original operation settles.
+may still apply; call `reconcile()` until the original operation settles. Receipts
+include all phases and validation. Aborting after selection can leave selection
+changed, but prevents a retime that has not yet dispatched.
 
 ## Development
 

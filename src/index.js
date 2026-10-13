@@ -98,10 +98,16 @@ export class FilmCraftClient {
     this.#guard();
     if (!file || typeof file.name !== 'string' || !Number.isSafeInteger(file.size) || file.size < 1 || file.size > 16 * 1024 * 1024) fail('INVALID_ARGUMENT', 'one File of at most 16 MiB is required');
     if (!/\.(mp4|mov|webm|png|jpg|jpeg|wav)$/i.test(file.name)) fail('UNSUPPORTED', 'unsupported media extension');
-    if (key(await this.inspect()) !== this.#project) fail('DOCUMENT', 'active project changed');
-    const result = await this.#run(async () => { const value = await this.#api.importFiles(file); this.#guard(); this.#project = key(await this.#api.execute('project.inspect', {})); return value; }, true, options.signal);
-    if (result.errors?.length || !result.items?.length) fail('IMPORT', JSON.stringify(result.errors || 'import produced no items'));
-    return result;
+    return this.#run(async () => {
+      const before = await this.#api.execute('project.inspect', {}); this.#guard();
+      if (key(before) !== this.#project) fail('DOCUMENT', 'active project changed');
+      if (options.signal?.aborted) fail('CANCELLED', 'cancelled before host dispatch; not run');
+      const result = await this.#api.importFiles(file); this.#guard();
+      const after = await this.#api.execute('project.inspect', {}); this.#guard();
+      this.#project = key(after);
+      if (result?.errors?.length || !result?.items?.length) fail('IMPORT', JSON.stringify(result?.errors || 'import produced no items'));
+      return result;
+    }, true, options.signal);
   }
   async createSequence({ name, fromItem }, options = {}) {
     label(name); integer(fromItem, 1, Number.MAX_SAFE_INTEGER, 'fromItem');
@@ -115,8 +121,16 @@ export class FilmCraftClient {
     integer(sequence, 1, Number.MAX_SAFE_INTEGER, 'sequence');
     integer(clip, 1, Number.MAX_SAFE_INTEGER, 'clip');
     integer(percent, 25, 400, 'percent');
-    await this.#mutate('timeline.select', { clips: [clip] }, { ...options, sequence });
-    return this.#mutate('clip.speedDuration', { clips: [clip], speed: percent, reverse: false, ripple: true, interpolation: 'frameSampling' }, { ...options, sequence });
+    if (!this.#commands.has('clip.speedDuration')) fail('UNSUPPORTED', 'host command missing: clip.speedDuration');
+    return this.#mutate('timeline.select', { clips: [clip] }, { ...options, sequence }, async () => {
+      // Selection and retiming share one receipt, including after a wait timeout.
+      // Selection does not increment the pinned host's project revision.
+      const current = await this.#api.execute('project.inspect', {}); this.#guard();
+      if (key(current) !== this.#project || current.activeSequence !== sequence) fail('DOCUMENT', 'active project or sequence changed during selection');
+      if (options.signal?.aborted) fail('CANCELLED', 'selection may have applied; retiming was not dispatched');
+      const result = await this.#api.execute('clip.speedDuration', { clips: [clip], speed: percent, reverse: false, ripple: true, interpolation: 'frameSampling' });
+      this.#guard(); return result;
+    });
   }
   async undo(options = {}) { return this.#mutate('edit.undo', {}, options); }
   async redo(options = {}) { return this.#mutate('edit.redo', {}, options); }

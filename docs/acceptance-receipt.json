@@ -1,15 +1,15 @@
 {
-  "tested_at_utc": "2026-10-13T17:43:23.941Z",
+  "tested_at_utc": "2026-10-13T17:57:24.689Z",
   "browser": "140.0.7339.16",
-  "browser_checks": 34,
-  "unit_tests": 23,
+  "browser_checks": 42,
+  "unit_tests": 28,
   "runtime_url": "https://github.com/storytold/filmcraft/releases/download/v0.7.2/filmcraft-web-0.7.2.zip",
   "runtime_sha256": "48d4f48728fa6b5c028612a4b7f59a5832ff38d430c6a7bd417a2c77d75ae4f9",
   "source_files": {
-    "src/index.js": "b4a6fc4eed0b553628fbf77e51a6987e565142b045bf608c0657e105fb44d843",
+    "src/index.js": "47f1c572bd89cf4d8a164fcf46e4e180c1cdba3924268d6ab5c36162ad4bf679",
     "src/index.d.ts": "4c120a17a548f364eb4f89f0cd17f23b0d62c489371f68270415ae7fd485aa5c",
-    "tests/client.test.js": "b5fba0c892f9a42bff33b458a7342f555b4c2c615f7bb331a8d58f9ee7ba45f6",
-    "tests/browser-acceptance.js": "1ded65b20943b954b62bdc7bd908e4305a8022251a4bd6e98e8242545defeb1d",
+    "tests/client.test.js": "7e089458e7f7bd401ce5d36337a4e879d90d845db6ebb59765bc0c6eecc53ee8",
+    "tests/browser-acceptance.js": "cff9de021a01e52626d7045b2bc0232c8933a151585c5f3dcd629354d061d335",
     "tests/browser-e2e.py": "ae432ee56f8281c5d70af9f45af246576563633893e878fde272219174df7dbd"
   },
   "media_oracles": {
@@ -87,6 +87,28 @@
     {
       "name": "redo restored edit",
       "ok": true
+    },
+    {
+      "name": "delayed selection times out waiting",
+      "ok": true,
+      "detail": {
+        "code": "TIMEOUT",
+        "message": "request may still apply; it was not replayed"
+      }
+    },
+    {
+      "name": "whole retime remains unsettled after selection timeout",
+      "ok": true
+    },
+    {
+      "name": "late receipt includes actual retime dispatch",
+      "ok": true,
+      "detail": {
+        "settled": true,
+        "uncertain": false,
+        "ok": true,
+        "result": null
+      }
     },
     {
       "name": "retime doubled timeline duration",
@@ -212,10 +234,10 @@
           "bytes": 157887,
           "frames": 24,
           "path": "/dcc/dcc-filmcraft-acceptance-20261013/browser-h264.mp4",
-          "render_fps": 41.19110958551446,
-          "seconds": 0.58265
+          "render_fps": 53.00704551980034,
+          "seconds": 0.45277
         },
-        "status": "Done in 0.6s",
+        "status": "Done in 0.5s",
         "total": 24
       }
     },
@@ -239,8 +261,8 @@
           "bytes": 384044,
           "frames": 96000,
           "path": "/dcc/dcc-filmcraft-acceptance-20261013/browser-wav.wav",
-          "render_fps": 5143316.367532815,
-          "seconds": 0.018665
+          "render_fps": 5936920.222634508,
+          "seconds": 0.01617
         },
         "status": "Done in 0.0s",
         "total": 2
@@ -292,6 +314,46 @@
     },
     {
       "name": "host stayed usable after error",
+      "ok": true
+    },
+    {
+      "name": "delayed invalid import times out waiting",
+      "ok": true,
+      "detail": {
+        "code": "TIMEOUT",
+        "message": "request may still apply; it was not replayed"
+      }
+    },
+    {
+      "name": "late import receipt preserves validation error",
+      "ok": true,
+      "detail": {
+        "settled": true,
+        "uncertain": false,
+        "ok": false,
+        "error": "BridgeError: [\"/files/bad.mp4: media: unsupported media: bad.mp4: unrecognised format\"]"
+      }
+    },
+    {
+      "name": "abort while selection response is pending",
+      "ok": true,
+      "detail": {
+        "code": "CANCELLED",
+        "message": "cancelled waiting after dispatch; operation may still apply"
+      }
+    },
+    {
+      "name": "abort receipt never claims unexecuted retime succeeded",
+      "ok": true,
+      "detail": {
+        "settled": true,
+        "uncertain": false,
+        "ok": false,
+        "error": "BridgeError: selection may have applied; retiming was not dispatched"
+      }
+    },
+    {
+      "name": "aborted retime preserves timeline duration",
       "ok": true
     },
     {

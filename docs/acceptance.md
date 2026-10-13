@@ -7,8 +7,8 @@ v0.7.2 browser API source is byte-identical to that source. No upstream patches.
 
 ## Results
 
-- 34 real browser assertions passed on Chromium 140.0.7339.16 with Playwright 1.55.0
-- 23 Node unit/regression tests passed; syntax, TypeScript consumer checks and npm
+- 42 real browser assertions passed on Chromium 140.0.7339.16 with Playwright 1.55.0
+- 28 Node unit/regression tests passed; syntax, TypeScript consumer checks and npm
   package dry-run passed
 - Browser runtime: official static JS + WASM, same visible editor, WebGL2/CPU via
   SwiftShader, `?empty&norecover&fresh&cpu&webgl`; single-threaded cooperative runtime
@@ -21,6 +21,9 @@ v0.7.2 browser API source is byte-identical to that source. No upstream patches.
   0.73046875 / 255 after re-encoding
 - Audio oracle: non-silent, 219.375 Hz after retiming the original 440 Hz tone;
   RMS 0.1248. This is a signal check, not subjective listening acceptance
+- Delayed official-response tests prove a retime receipt covers both selection and
+  actual speed change; invalid imports reconcile as errors; mid-selection abort
+  does not dispatch the retime or claim it succeeded
 - Real owned export cancellation reached terminal `result.error="cancelled"`
 - Wrong origin/source/session, message replay, stale identity, traversal,
   duplicate paths, unowned native reopen, pre-dispatch abort, host error recovery

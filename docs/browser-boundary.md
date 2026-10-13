@@ -29,6 +29,9 @@ controller and leave the UI idle while it runs. Do not claim transactional safet
 Mutations are not automatically retried. A timeout or AbortSignal stops waiting,
 not the host operation. The original operation receipt and completion bookkeeping
 remain alive. `reconcile()` cannot clear uncertainty based on an unrelated query.
+The receipt covers the complete public operation, including import validation and
+both selection and retiming. A timeout continues the original operation; abort
+between phases leaves any completed selection in place and prevents retiming.
 Pre-aborted calls do not dispatch a mutation. `cancelExport` targets only recorded
 jobs; the caller must observe terminal state before closing. No generic queue
 cancellation is claimed for upstream promises.

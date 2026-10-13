@@ -27,7 +27,15 @@ try{
  const originalTimeline=await client.inspectSequence(sequence);
  const videoClip=originalTimeline.video.flatMap(t=>t.items)[0].clip;
  const beforeShot=await filmcraft.screenshot();await upload('before-editor.png',Uint8Array.from(atob(beforeShot.pngBase64),c=>c.charCodeAt(0)));
- await client.setPlaybackRate({sequence,clip:videoClip,percent:50});
+ // Fault injection delays only the official response; the real editor still executes.
+ const executeOriginal=filmcraft.execute;let retimeDispatches=0;
+ filmcraft.execute=async(id,params)=>{if(id==='clip.speedDuration')retimeDispatches++;const value=await executeOriginal(id,params);if(id==='timeline.select')await sleep(1200);return value;};
+ client.timeoutMs=500;
+ await rejects(()=>client.setPlaybackRate({sequence,clip:videoClip,percent:50}),'TIMEOUT','delayed selection times out waiting');
+ assert(client.reconcile().uncertain===true,'whole retime remains unsettled after selection timeout');
+ await sleep(1400);const retimeReceipt=client.reconcile();
+ assert(retimeReceipt.ok===true&&retimeDispatches===1,'late receipt includes actual retime dispatch',retimeReceipt);
+ filmcraft.execute=executeOriginal;client.timeoutMs=30000;
  const retimed=await client.inspectSequence(sequence);
  assert(retimed.durationFrames===originalTimeline.durationFrames*2,'retime doubled timeline duration',retimed.durationFrames);
  assert(retimed.video.flatMap(t=>t.items)[0].speed===0.5,'video retimed to half speed');
@@ -68,6 +76,20 @@ try{
  try{await filmcraft.execute('dcc.invalid.command',{});assert(false,'host error surfaced')}catch(e){assert(String(e).length>0,'host error surfaced',String(e));}
  assert((await client.inspectSequence(sequence)).name==='Browser edited','host stayed usable after error');
  const shot=await filmcraft.screenshot();await upload('visible-editor.png',Uint8Array.from(atob(shot.pngBase64),c=>c.charCodeAt(0)));
+ const importOriginal=filmcraft.importFiles;
+ filmcraft.importFiles=async file=>{const value=await importOriginal(file);await sleep(1200);return value;};client.timeoutMs=500;
+ await rejects(()=>client.importMedia(new File(['not media'],'bad.mp4')),'TIMEOUT','delayed invalid import times out waiting');
+ await sleep(1400);const importReceipt=client.reconcile();
+ assert(importReceipt.ok===false&&importReceipt.error?.includes('unsupported media'),'late import receipt preserves validation error',importReceipt);
+ filmcraft.importFiles=importOriginal;client.timeoutMs=30000;
+ let finishSelection,abortRetimeDispatches=0;const midAbort=new AbortController();
+ filmcraft.execute=async(id,params)=>{if(id==='clip.speedDuration')abortRetimeDispatches++;const value=await executeOriginal(id,params);if(id==='timeline.select')await new Promise(r=>{finishSelection=r});return value;};
+ const abortWork=rejects(()=>client.setPlaybackRate({sequence,clip:videoClip,percent:100},{signal:midAbort.signal}),'CANCELLED','abort while selection response is pending');
+ while(!finishSelection)await sleep(10);midAbort.abort();await abortWork;finishSelection();await sleep(100);
+ const abortReceipt=client.reconcile();
+ assert(abortReceipt.ok===false&&abortRetimeDispatches===0&&abortReceipt.error?.includes('retiming was not dispatched'),'abort receipt never claims unexecuted retime succeeded',abortReceipt);
+ filmcraft.execute=executeOriginal;
+ assert((await client.inspectSequence(sequence)).durationFrames===retimed.durationFrames,'aborted retime preserves timeline duration');
  await client.close();await rejects(()=>client.inspect(),'CLOSED','closed SDK refuses calls');
  assert((await filmcraft.execute('project.inspect')).activeSequence===sequence,'cleanup preserves visible user document');
  report.passed=true;

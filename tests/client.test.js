@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { FilmCraftClient, installMessageBridge } from '../src/index.js';
 const ORIGIN = 'https://editor.example';
 const SESSION = 'test-session-123456789';
-const ids = ['project.inspect','sequence.inspect','file.newProject','file.newSequence','clip.rename','edit.undo','edit.redo','file.saveAs','file.open','file.exportMedia','jobs.list','jobs.cancel'];
+const ids = ['project.inspect','sequence.inspect','file.newProject','file.newSequence','clip.rename','timeline.select','clip.speedDuration','edit.undo','edit.redo','file.saveAs','file.open','file.exportMedia','jobs.list','jobs.cancel'];
 function fixture() {
   const calls = []; const project = { name:'Untitled', root:{id:1,children:[]}, dirty:false, activeSequence:2 };
   const handlers = new Map(); let fn;
@@ -39,3 +39,42 @@ test('modified native save cannot be reopened',async()=>{const f=fixture(),c=awa
 test('cross-realm Uint8Array save is accepted and copied',async()=>{const {runInNewContext}=await import('node:vm');const f=fixture(),c=await connect(f);f.host.filmcraft.readFile=async()=>runInNewContext('new Uint8Array([1,2,3])');assert.deepEqual((await c.save('cross')).bytes,new Uint8Array([1,2,3]));});
 test('session replacement during host mutation rejects result',async()=>{const f=fixture(),c=await connect(f);let finish;f.handlers.set('clip.rename',()=>new Promise(r=>{finish=r}));const pending=c.renameItem(2,'X');while(!finish)await new Promise(r=>setTimeout(r,0));f.host.document={};finish({});await assert.rejects(pending,{code:'SESSION'});});
 test('close refuses live owned jobs instead of losing cancellation ownership',async()=>{const f=fixture(),c=await connect(f);f.handlers.set('file.exportMedia',async()=>({job:7}));await c.exportVideo({name:'active',sequence:2});f.handlers.set('jobs.list',async()=>[{id:7,finished:false}]);await assert.rejects(c.close(),{code:'BUSY'});await c.cancelExport(7);});
+test('late selection receipt covers the requested retime, not just selection',async()=>{
+  const f=fixture(),c=await connect(f,{timeoutMs:10});let finish;
+  f.handlers.set('timeline.select',()=>new Promise(r=>{finish=r}));
+  f.handlers.set('clip.speedDuration',async()=>({speed:0.5}));
+  await assert.rejects(c.setPlaybackRate({sequence:2,clip:3,percent:50}),{code:'TIMEOUT'});
+  assert.deepEqual(c.reconcile(),{settled:false,uncertain:true});
+  finish({selection:[3]});await new Promise(r=>setTimeout(r,0));
+  assert.deepEqual(c.reconcile(),{settled:true,uncertain:false,ok:true,result:{speed:0.5},error:undefined});
+  assert.equal(f.calls.filter(([id])=>id==='clip.speedDuration').length,1);
+});
+test('abort during selection does not dispatch retime or claim successful retime',async()=>{
+  const f=fixture(),c=await connect(f);let finish;const a=new AbortController();
+  f.handlers.set('timeline.select',()=>new Promise(r=>{finish=r}));
+  const pending=c.setPlaybackRate({sequence:2,clip:3,percent:50},{signal:a.signal});
+  while(!finish)await new Promise(r=>setTimeout(r,0));a.abort();await assert.rejects(pending,{code:'CANCELLED'});
+  finish({selection:[3]});await new Promise(r=>setTimeout(r,0));
+  const receipt=c.reconcile();assert.equal(receipt.ok,false);assert.match(receipt.error,/retiming was not dispatched/);
+  assert.equal(f.calls.filter(([id])=>id==='clip.speedDuration').length,0);
+});
+test('project changes during delayed selection prevent retime',async()=>{
+  const f=fixture(),c=await connect(f);let finish;
+  f.handlers.set('timeline.select',()=>new Promise(r=>{finish=r}));
+  const pending=c.setPlaybackRate({sequence:2,clip:3,percent:50});
+  while(!finish)await new Promise(r=>setTimeout(r,0));f.project.revision=3;finish({selection:[3]});
+  await assert.rejects(pending,{code:'DOCUMENT'});assert.equal(f.calls.filter(([id])=>id==='clip.speedDuration').length,0);
+});
+test('missing retime capability never dispatches selection',async()=>{
+  const f=fixture();f.host.filmcraft.commands=async()=>ids.filter(id=>id!=='clip.speedDuration').map(id=>({id}));
+  const c=await connect(f);await assert.rejects(c.setPlaybackRate({sequence:2,clip:3,percent:50}),{code:'UNSUPPORTED'});
+  assert.equal(f.calls.filter(([id])=>id==='timeline.select').length,0);
+});
+test('late failed import receipt includes validation and preserves bookkeeping',async()=>{
+  const f=fixture(),c=await connect(f,{timeoutMs:10});let finish;
+  f.host.filmcraft.importFiles=()=>new Promise(r=>{finish=r});
+  await assert.rejects(c.importMedia({name:'bad.mp4',size:3}),{code:'TIMEOUT'});
+  f.project.revision=3;finish({items:[],errors:['unsupported media']});await new Promise(r=>setTimeout(r,0));
+  const receipt=c.reconcile();assert.equal(receipt.ok,false);assert.match(receipt.error,/unsupported media/);
+  await c.renameItem(2,'Still usable');
+});
