@@ -1,0 +1,4 @@
+node_modules/
+evidence/
+__pycache__/
+*.tgz

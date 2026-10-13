@@ -1,0 +1,612 @@
+{
+  "verified_at_utc": "2026-10-13T17:25:24.432836+00:00",
+  "scope": "Read-only primary-source research. No applications installed or run, no repositories created, no credentials.",
+  "family_count": 13,
+  "published_browser_release_count": 13,
+  "marketing_page_browser_count": 12,
+  "marketing_page": "https://getartcraft.com/apps",
+  "important_caveats": [
+    "Marketing page is stale: excludes FilmCraft browser support, yet official v0.7.2 release has a web ZIP and documented JS API.",
+    "Marketing pages also lag latest release versions.",
+    "All 13 root Cargo.toml declare MIT OR Apache-2.0 and both license files were retrieved; this is not a full dependency, asset, font, patent or trademark audit.",
+    "Browser WASM is not WASI. All 13 packaging scripts cite wasm32-unknown-unknown. No WASI application support verified.",
+    "Release existence and source inspection do not prove browser runtime reliability. FilmCraft runtime tests are recorded separately in acceptance.md."
+  ],
+  "apps": [
+    {
+      "id": "photocraft",
+      "name": "PhotoCraft",
+      "role": "Image editing",
+      "repository": "https://github.com/storytold/photocraft",
+      "official_page": "https://getartcraft.com/apps/photocraft",
+      "source_version": "0.8.2",
+      "source_version_scope": "main workspace package at retrieval, not inferred release status",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": {
+        "Cargo.toml": "https://github.com/storytold/photocraft/blob/main/Cargo.toml",
+        "LICENSE-MIT": "https://github.com/storytold/photocraft/blob/main/LICENSE-MIT",
+        "LICENSE-APACHE": "https://github.com/storytold/photocraft/blob/main/LICENSE-APACHE"
+      },
+      "rust_version": "1.95",
+      "source_tree_sha": "be7a1f80fc06954b52b5851c58d254c2ce7bdf8f",
+      "latest_release": {
+        "tag": "v0.8.2",
+        "published_at": "2026-10-12T21:22:47Z",
+        "url": "https://github.com/storytold/photocraft/releases/tag/v0.8.2"
+      },
+      "browser": {
+        "official_marketing_list_includes": true,
+        "official_release_asset": "https://github.com/storytold/photocraft/releases/download/v0.8.2/photocraft-web-0.8.2.zip",
+        "asset_size_bytes": 11063686,
+        "asset_digest": "sha256:490e4f3c242f2eee42f58446db8e7d468ac7abae3548b31a477e7fd43a7e92f4",
+        "target": "wasm32-unknown-unknown",
+        "hosting_docs": "https://github.com/storytold/photocraft/blob/main/packaging/web/README.md",
+        "build_evidence": "https://github.com/storytold/photocraft/blob/main/packaging/web/package.sh",
+        "runtime_tested_in_this_research": false
+      },
+      "wasi": {
+        "status": "No supported WASI application artifact or target verified",
+        "caveat": "Browser wasm32-unknown-unknown build does not establish WASI support; dependency/plugin WASM support must not be confused with an application WASI port."
+      }
+    },
+    {
+      "id": "vectorcraft",
+      "name": "VectorCraft",
+      "role": "Vector illustration",
+      "repository": "https://github.com/storytold/vectorcraft",
+      "official_page": "https://getartcraft.com/apps/vectorcraft",
+      "source_version": "0.10.0",
+      "source_version_scope": "main workspace package at retrieval, not inferred release status",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": {
+        "Cargo.toml": "https://github.com/storytold/vectorcraft/blob/main/Cargo.toml",
+        "LICENSE-MIT": "https://github.com/storytold/vectorcraft/blob/main/LICENSE-MIT",
+        "LICENSE-APACHE": "https://github.com/storytold/vectorcraft/blob/main/LICENSE-APACHE"
+      },
+      "rust_version": "1.95",
+      "source_tree_sha": "0d0ea352df99044589a7ce0efc7004f7a5b6b7c0",
+      "latest_release": {
+        "tag": "v0.10.0",
+        "published_at": "2026-10-12T15:56:13Z",
+        "url": "https://github.com/storytold/vectorcraft/releases/tag/v0.10.0"
+      },
+      "browser": {
+        "official_marketing_list_includes": true,
+        "official_release_asset": "https://github.com/storytold/vectorcraft/releases/download/v0.10.0/vectorcraft-web-0.10.0.zip",
+        "asset_size_bytes": 23642640,
+        "asset_digest": "sha256:aaf1136d4e76606085294942563207111ab7f57cbe6d5f97f03573fa14d37968",
+        "target": "wasm32-unknown-unknown",
+        "hosting_docs": "https://github.com/storytold/vectorcraft/blob/main/packaging/web/README.md",
+        "build_evidence": "https://github.com/storytold/vectorcraft/blob/main/packaging/web/package.sh",
+        "runtime_tested_in_this_research": false
+      },
+      "wasi": {
+        "status": "No supported WASI application artifact or target verified",
+        "caveat": "Browser wasm32-unknown-unknown build does not establish WASI support; dependency/plugin WASM support must not be confused with an application WASI port."
+      }
+    },
+    {
+      "id": "filmcraft",
+      "name": "FilmCraft",
+      "role": "Video editing",
+      "repository": "https://github.com/storytold/filmcraft",
+      "official_page": "https://getartcraft.com/apps/filmcraft",
+      "source_version": "0.7.2",
+      "source_version_scope": "main workspace package at retrieval, not inferred release status",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": {
+        "Cargo.toml": "https://github.com/storytold/filmcraft/blob/main/Cargo.toml",
+        "LICENSE-MIT": "https://github.com/storytold/filmcraft/blob/main/LICENSE-MIT",
+        "LICENSE-APACHE": "https://github.com/storytold/filmcraft/blob/main/LICENSE-APACHE"
+      },
+      "rust_version": "1.95",
+      "source_tree_sha": "cee1feb185e675a108f78067f71ad86a640ace3d",
+      "latest_release": {
+        "tag": "v0.7.2",
+        "published_at": "2026-10-12T21:22:57Z",
+        "url": "https://github.com/storytold/filmcraft/releases/tag/v0.7.2"
+      },
+      "browser": {
+        "official_marketing_list_includes": false,
+        "official_release_asset": "https://github.com/storytold/filmcraft/releases/download/v0.7.2/filmcraft-web-0.7.2.zip",
+        "asset_size_bytes": 13166192,
+        "asset_digest": "sha256:48d4f48728fa6b5c028612a4b7f59a5832ff38d430c6a7bd417a2c77d75ae4f9",
+        "target": "wasm32-unknown-unknown",
+        "hosting_docs": "https://github.com/storytold/filmcraft/blob/main/packaging/web/README.md",
+        "build_evidence": "https://github.com/storytold/filmcraft/blob/main/packaging/web/package.sh",
+        "runtime_tested_in_this_research": false
+      },
+      "wasi": {
+        "status": "No supported WASI application artifact or target verified",
+        "caveat": "Browser wasm32-unknown-unknown build does not establish WASI support; dependency/plugin WASM support must not be confused with an application WASI port."
+      }
+    },
+    {
+      "id": "lightcraft",
+      "name": "LightCraft",
+      "role": "Photo library and raw development",
+      "repository": "https://github.com/storytold/lightcraft",
+      "official_page": "https://getartcraft.com/apps/lightcraft",
+      "source_version": "0.7.1",
+      "source_version_scope": "main workspace package at retrieval, not inferred release status",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": {
+        "Cargo.toml": "https://github.com/storytold/lightcraft/blob/main/Cargo.toml",
+        "LICENSE-MIT": "https://github.com/storytold/lightcraft/blob/main/LICENSE-MIT",
+        "LICENSE-APACHE": "https://github.com/storytold/lightcraft/blob/main/LICENSE-APACHE"
+      },
+      "rust_version": "1.90",
+      "source_tree_sha": "b3d392b4994ee99dc389890f006600769d0c4ff5",
+      "latest_release": {
+        "tag": "v0.7.1",
+        "published_at": "2026-10-12T21:22:50Z",
+        "url": "https://github.com/storytold/lightcraft/releases/tag/v0.7.1"
+      },
+      "browser": {
+        "official_marketing_list_includes": true,
+        "official_release_asset": "https://github.com/storytold/lightcraft/releases/download/v0.7.1/lightcraft-web-0.7.1.zip",
+        "asset_size_bytes": 66402662,
+        "asset_digest": "sha256:cc1c33a23e82d5e7e9e34f75b46fa5de333fcfd3b852f57d9a051fe2e3f22fa9",
+        "target": "wasm32-unknown-unknown",
+        "hosting_docs": "https://github.com/storytold/lightcraft/blob/main/packaging/web/README.md",
+        "build_evidence": "https://github.com/storytold/lightcraft/blob/main/packaging/web/package.sh",
+        "runtime_tested_in_this_research": false
+      },
+      "wasi": {
+        "status": "No supported WASI application artifact or target verified",
+        "caveat": "Browser wasm32-unknown-unknown build does not establish WASI support; dependency/plugin WASM support must not be confused with an application WASI port."
+      }
+    },
+    {
+      "id": "pdfcraft",
+      "name": "PdfCraft",
+      "role": "PDF workbench",
+      "repository": "https://github.com/storytold/pdfcraft",
+      "official_page": "https://getartcraft.com/apps/pdfcraft",
+      "source_version": "0.7.1",
+      "source_version_scope": "main workspace package at retrieval, not inferred release status",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": {
+        "Cargo.toml": "https://github.com/storytold/pdfcraft/blob/main/Cargo.toml",
+        "LICENSE-MIT": "https://github.com/storytold/pdfcraft/blob/main/LICENSE-MIT",
+        "LICENSE-APACHE": "https://github.com/storytold/pdfcraft/blob/main/LICENSE-APACHE"
+      },
+      "rust_version": "1.95",
+      "source_tree_sha": "7437bde378f43856eada40af25b983812e615e8a",
+      "latest_release": {
+        "tag": "v0.7.1",
+        "published_at": "2026-10-12T15:55:32Z",
+        "url": "https://github.com/storytold/pdfcraft/releases/tag/v0.7.1"
+      },
+      "browser": {
+        "official_marketing_list_includes": true,
+        "official_release_asset": "https://github.com/storytold/pdfcraft/releases/download/v0.7.1/pdfcraft-web-0.7.1.zip",
+        "asset_size_bytes": 14047380,
+        "asset_digest": "sha256:2e58067125b2c14d92d50888a6a03351302065ff4b99c0914892a078f05dfd66",
+        "target": "wasm32-unknown-unknown",
+        "hosting_docs": "https://github.com/storytold/pdfcraft/blob/main/packaging/web/README.md",
+        "build_evidence": "https://github.com/storytold/pdfcraft/blob/main/packaging/web/package.sh",
+        "runtime_tested_in_this_research": false
+      },
+      "wasi": {
+        "status": "No supported WASI application artifact or target verified",
+        "caveat": "Browser wasm32-unknown-unknown build does not establish WASI support; dependency/plugin WASM support must not be confused with an application WASI port."
+      }
+    },
+    {
+      "id": "effectcraft",
+      "name": "EffectCraft",
+      "role": "Motion graphics and VFX",
+      "repository": "https://github.com/storytold/effectcraft",
+      "official_page": "https://getartcraft.com/apps/effectcraft",
+      "source_version": "0.9.2",
+      "source_version_scope": "main workspace package at retrieval, not inferred release status",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": {
+        "Cargo.toml": "https://github.com/storytold/effectcraft/blob/main/Cargo.toml",
+        "LICENSE-MIT": "https://github.com/storytold/effectcraft/blob/main/LICENSE-MIT",
+        "LICENSE-APACHE": "https://github.com/storytold/effectcraft/blob/main/LICENSE-APACHE"
+      },
+      "rust_version": "1.95",
+      "source_tree_sha": "549e9d825132986d6167c1432cd3328efcbb0278",
+      "latest_release": {
+        "tag": "v0.9.2",
+        "published_at": "2026-10-12T21:22:55Z",
+        "url": "https://github.com/storytold/effectcraft/releases/tag/v0.9.2"
+      },
+      "browser": {
+        "official_marketing_list_includes": true,
+        "official_release_asset": "https://github.com/storytold/effectcraft/releases/download/v0.9.2/effectcraft-web-0.9.2.zip",
+        "asset_size_bytes": 18801063,
+        "asset_digest": "sha256:09e4a278652fb389725f991c12ea4fb667599c19d0b2b3d2fded31d662bc1ad9",
+        "target": "wasm32-unknown-unknown",
+        "hosting_docs": "https://github.com/storytold/effectcraft/blob/main/packaging/web/README.md",
+        "build_evidence": "https://github.com/storytold/effectcraft/blob/main/packaging/web/package.sh",
+        "runtime_tested_in_this_research": false
+      },
+      "wasi": {
+        "status": "No supported WASI application artifact or target verified",
+        "caveat": "Browser wasm32-unknown-unknown build does not establish WASI support; dependency/plugin WASM support must not be confused with an application WASI port."
+      }
+    },
+    {
+      "id": "designcraft",
+      "name": "DesignCraft",
+      "role": "Page layout and publishing",
+      "repository": "https://github.com/storytold/designcraft",
+      "official_page": "https://getartcraft.com/apps/designcraft",
+      "source_version": "0.7.1",
+      "source_version_scope": "main workspace package at retrieval, not inferred release status",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": {
+        "Cargo.toml": "https://github.com/storytold/designcraft/blob/main/Cargo.toml",
+        "LICENSE-MIT": "https://github.com/storytold/designcraft/blob/main/LICENSE-MIT",
+        "LICENSE-APACHE": "https://github.com/storytold/designcraft/blob/main/LICENSE-APACHE"
+      },
+      "rust_version": "1.95",
+      "source_tree_sha": "e862e0a613c0793c6fea7cfd37ad4145ed6cf686",
+      "latest_release": {
+        "tag": "v0.7.1",
+        "published_at": "2026-10-12T21:22:52Z",
+        "url": "https://github.com/storytold/designcraft/releases/tag/v0.7.1"
+      },
+      "browser": {
+        "official_marketing_list_includes": true,
+        "official_release_asset": "https://github.com/storytold/designcraft/releases/download/v0.7.1/designcraft-web-0.7.1.zip",
+        "asset_size_bytes": 15098404,
+        "asset_digest": "sha256:863b32bcdbcbb481cd07151e728578331e86b013e7a0643e2f46e754cbc8c58f",
+        "target": "wasm32-unknown-unknown",
+        "hosting_docs": "https://github.com/storytold/designcraft/blob/main/packaging/web/README.md",
+        "build_evidence": "https://github.com/storytold/designcraft/blob/main/packaging/web/package.sh",
+        "runtime_tested_in_this_research": false
+      },
+      "wasi": {
+        "status": "No supported WASI application artifact or target verified",
+        "caveat": "Browser wasm32-unknown-unknown build does not establish WASI support; dependency/plugin WASM support must not be confused with an application WASI port."
+      }
+    },
+    {
+      "id": "figcraft",
+      "name": "FigCraft",
+      "role": "Interface design and prototyping",
+      "repository": "https://github.com/storytold/figcraft",
+      "official_page": "https://getartcraft.com/apps/figcraft",
+      "source_version": "0.5.1",
+      "source_version_scope": "main workspace package at retrieval, not inferred release status",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": {
+        "Cargo.toml": "https://github.com/storytold/figcraft/blob/main/Cargo.toml",
+        "LICENSE-MIT": "https://github.com/storytold/figcraft/blob/main/LICENSE-MIT",
+        "LICENSE-APACHE": "https://github.com/storytold/figcraft/blob/main/LICENSE-APACHE"
+      },
+      "rust_version": "1.95",
+      "source_tree_sha": "e56856f4016c76fbc862ac2fb4fd3fb43a68f396",
+      "latest_release": {
+        "tag": "v0.5.1",
+        "published_at": "2026-10-12T15:51:49Z",
+        "url": "https://github.com/storytold/figcraft/releases/tag/v0.5.1"
+      },
+      "browser": {
+        "official_marketing_list_includes": true,
+        "official_release_asset": "https://github.com/storytold/figcraft/releases/download/v0.5.1/figcraft-web-0.5.1.zip",
+        "asset_size_bytes": 8625525,
+        "asset_digest": "sha256:b8faba80bfdee94254c9bb78e45977ecb4ff44de9915b34cfb51979a77c89e09",
+        "target": "wasm32-unknown-unknown",
+        "hosting_docs": "https://github.com/storytold/figcraft/blob/main/packaging/web/README.md",
+        "build_evidence": "https://github.com/storytold/figcraft/blob/main/packaging/web/package.sh",
+        "runtime_tested_in_this_research": false
+      },
+      "wasi": {
+        "status": "No supported WASI application artifact or target verified",
+        "caveat": "Browser wasm32-unknown-unknown build does not establish WASI support; dependency/plugin WASM support must not be confused with an application WASI port."
+      }
+    },
+    {
+      "id": "wordcraft",
+      "name": "WordCraft",
+      "role": "Word processing",
+      "repository": "https://github.com/storytold/wordcraft",
+      "official_page": "https://getartcraft.com/apps/wordcraft",
+      "source_version": "0.6.1",
+      "source_version_scope": "main workspace package at retrieval, not inferred release status",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": {
+        "Cargo.toml": "https://github.com/storytold/wordcraft/blob/main/Cargo.toml",
+        "LICENSE-MIT": "https://github.com/storytold/wordcraft/blob/main/LICENSE-MIT",
+        "LICENSE-APACHE": "https://github.com/storytold/wordcraft/blob/main/LICENSE-APACHE"
+      },
+      "rust_version": "1.90",
+      "source_tree_sha": "159b84f54c74e9e82fb3109b758ae7dd6f4e3ab0",
+      "latest_release": {
+        "tag": "v0.6.1",
+        "published_at": "2026-10-12T16:22:15Z",
+        "url": "https://github.com/storytold/wordcraft/releases/tag/v0.6.1"
+      },
+      "browser": {
+        "official_marketing_list_includes": true,
+        "official_release_asset": "https://github.com/storytold/wordcraft/releases/download/v0.6.1/wordcraft-web-0.6.1.zip",
+        "asset_size_bytes": 14811800,
+        "asset_digest": "sha256:85e458cb5adaa75afa871a9858c735ef7fd1e05741c6bf5d444dc09a1eb29e0a",
+        "target": "wasm32-unknown-unknown",
+        "hosting_docs": "https://github.com/storytold/wordcraft/blob/main/packaging/web/README.md",
+        "build_evidence": "https://github.com/storytold/wordcraft/blob/main/packaging/web/package.sh",
+        "runtime_tested_in_this_research": false
+      },
+      "wasi": {
+        "status": "No supported WASI application artifact or target verified",
+        "caveat": "Browser wasm32-unknown-unknown build does not establish WASI support; dependency/plugin WASM support must not be confused with an application WASI port."
+      }
+    },
+    {
+      "id": "soundcraft",
+      "name": "SoundCraft",
+      "role": "Digital audio workstation",
+      "repository": "https://github.com/storytold/soundcraft",
+      "official_page": "https://getartcraft.com/apps/soundcraft",
+      "source_version": "0.6.1",
+      "source_version_scope": "main workspace package at retrieval, not inferred release status",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": {
+        "Cargo.toml": "https://github.com/storytold/soundcraft/blob/main/Cargo.toml",
+        "LICENSE-MIT": "https://github.com/storytold/soundcraft/blob/main/LICENSE-MIT",
+        "LICENSE-APACHE": "https://github.com/storytold/soundcraft/blob/main/LICENSE-APACHE"
+      },
+      "rust_version": "1.90",
+      "source_tree_sha": "c0cb99340891d306e216582db465f3594b89dc1d",
+      "latest_release": {
+        "tag": "v0.6.1",
+        "published_at": "2026-10-12T15:57:05Z",
+        "url": "https://github.com/storytold/soundcraft/releases/tag/v0.6.1"
+      },
+      "browser": {
+        "official_marketing_list_includes": true,
+        "official_release_asset": "https://github.com/storytold/soundcraft/releases/download/v0.6.1/soundcraft-web-0.6.1.zip",
+        "asset_size_bytes": 5642429,
+        "asset_digest": "sha256:de78ec829b8c876bef748a792ba97a82aa37abdb0cd687156a7753220c6a1bef",
+        "target": "wasm32-unknown-unknown",
+        "hosting_docs": "https://github.com/storytold/soundcraft/blob/main/packaging/web/README.md",
+        "build_evidence": "https://github.com/storytold/soundcraft/blob/main/packaging/web/package.sh",
+        "runtime_tested_in_this_research": false
+      },
+      "wasi": {
+        "status": "No supported WASI application artifact or target verified",
+        "caveat": "Browser wasm32-unknown-unknown build does not establish WASI support; dependency/plugin WASM support must not be confused with an application WASI port."
+      }
+    },
+    {
+      "id": "deckcraft",
+      "name": "DeckCraft",
+      "role": "Presentations",
+      "repository": "https://github.com/storytold/deckcraft",
+      "official_page": "https://getartcraft.com/apps/deckcraft",
+      "source_version": "0.6.1",
+      "source_version_scope": "main workspace package at retrieval, not inferred release status",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": {
+        "Cargo.toml": "https://github.com/storytold/deckcraft/blob/main/Cargo.toml",
+        "LICENSE-MIT": "https://github.com/storytold/deckcraft/blob/main/LICENSE-MIT",
+        "LICENSE-APACHE": "https://github.com/storytold/deckcraft/blob/main/LICENSE-APACHE"
+      },
+      "rust_version": "1.90",
+      "source_tree_sha": "457406a7a5b62425e915926c8ccb0984e61a198c",
+      "latest_release": {
+        "tag": "v0.6.1",
+        "published_at": "2026-10-12T18:22:34Z",
+        "url": "https://github.com/storytold/deckcraft/releases/tag/v0.6.1"
+      },
+      "browser": {
+        "official_marketing_list_includes": true,
+        "official_release_asset": "https://github.com/storytold/deckcraft/releases/download/v0.6.1/deckcraft-web-0.6.1.zip",
+        "asset_size_bytes": 8949762,
+        "asset_digest": "sha256:dd76659f643fa98ff79c86bf439bcaeeaaf6bd3a4037a1dc6628c97366862ba1",
+        "target": "wasm32-unknown-unknown",
+        "hosting_docs": "https://github.com/storytold/deckcraft/blob/main/packaging/web/README.md",
+        "build_evidence": "https://github.com/storytold/deckcraft/blob/main/packaging/web/package.sh",
+        "runtime_tested_in_this_research": false
+      },
+      "wasi": {
+        "status": "No supported WASI application artifact or target verified",
+        "caveat": "Browser wasm32-unknown-unknown build does not establish WASI support; dependency/plugin WASM support must not be confused with an application WASI port."
+      }
+    },
+    {
+      "id": "cadcraft",
+      "name": "CADCraft",
+      "role": "CAD and drafting",
+      "repository": "https://github.com/storytold/cadcraft",
+      "official_page": "https://getartcraft.com/apps/cadcraft",
+      "source_version": "0.6.2",
+      "source_version_scope": "main workspace package at retrieval, not inferred release status",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": {
+        "Cargo.toml": "https://github.com/storytold/cadcraft/blob/main/Cargo.toml",
+        "LICENSE-MIT": "https://github.com/storytold/cadcraft/blob/main/LICENSE-MIT",
+        "LICENSE-APACHE": "https://github.com/storytold/cadcraft/blob/main/LICENSE-APACHE"
+      },
+      "rust_version": "1.90",
+      "source_tree_sha": "e707ab4d7cc10102e550ad4c5bcecef1084a9baa",
+      "latest_release": {
+        "tag": "v0.6.2",
+        "published_at": "2026-10-12T16:40:01Z",
+        "url": "https://github.com/storytold/cadcraft/releases/tag/v0.6.2"
+      },
+      "browser": {
+        "official_marketing_list_includes": true,
+        "official_release_asset": "https://github.com/storytold/cadcraft/releases/download/v0.6.2/cadcraft-web-0.6.2.zip",
+        "asset_size_bytes": 7840826,
+        "asset_digest": "sha256:9d27c10b3c9101df894e44867bba46c644f23f7b4e05bd2c743762fb49509e7b",
+        "target": "wasm32-unknown-unknown",
+        "hosting_docs": "https://github.com/storytold/cadcraft/blob/main/packaging/web/README.md",
+        "build_evidence": "https://github.com/storytold/cadcraft/blob/main/packaging/web/package.sh",
+        "runtime_tested_in_this_research": false
+      },
+      "wasi": {
+        "status": "No supported WASI application artifact or target verified",
+        "caveat": "Browser wasm32-unknown-unknown build does not establish WASI support; dependency/plugin WASM support must not be confused with an application WASI port."
+      }
+    },
+    {
+      "id": "gridcraft",
+      "name": "GridCraft",
+      "role": "Spreadsheets and data analysis",
+      "repository": "https://github.com/storytold/gridcraft",
+      "official_page": "https://getartcraft.com/apps/gridcraft",
+      "source_version": "0.6.1",
+      "source_version_scope": "main workspace package at retrieval, not inferred release status",
+      "license_expression": "MIT OR Apache-2.0",
+      "license_evidence": {
+        "Cargo.toml": "https://github.com/storytold/gridcraft/blob/main/Cargo.toml",
+        "LICENSE-MIT": "https://github.com/storytold/gridcraft/blob/main/LICENSE-MIT",
+        "LICENSE-APACHE": "https://github.com/storytold/gridcraft/blob/main/LICENSE-APACHE"
+      },
+      "rust_version": "1.90",
+      "source_tree_sha": "84acf6293b1dc1fc09837524e035d674eb4d6741",
+      "latest_release": {
+        "tag": "v0.6.1",
+        "published_at": "2026-10-12T17:07:30Z",
+        "url": "https://github.com/storytold/gridcraft/releases/tag/v0.6.1"
+      },
+      "browser": {
+        "official_marketing_list_includes": true,
+        "official_release_asset": "https://github.com/storytold/gridcraft/releases/download/v0.6.1/gridcraft-web-0.6.1.zip",
+        "asset_size_bytes": 6961445,
+        "asset_digest": "sha256:86048ba175689ff852c141d6115e5491f0856f891300c3e1f91274b9c2709a42",
+        "target": "wasm32-unknown-unknown",
+        "hosting_docs": "https://github.com/storytold/gridcraft/blob/main/packaging/web/README.md",
+        "build_evidence": "https://github.com/storytold/gridcraft/blob/main/packaging/web/package.sh",
+        "runtime_tested_in_this_research": false
+      },
+      "wasi": {
+        "status": "No supported WASI application artifact or target verified",
+        "caveat": "Browser wasm32-unknown-unknown build does not establish WASI support; dependency/plugin WASM support must not be confused with an application WASI port."
+      }
+    }
+  ],
+  "browser_integration_surfaces": {
+    "photocraft": {
+      "status": "No exported live-document JavaScript command dispatcher found in inspected main web shell",
+      "details": "Private WebShell; browser file picker/download/drag-drop and Services inbox. Native CLI/MCP and Rust API are separate integration surfaces. Add an in-process Rust/WASM bridge or operate real UI; do not claim a separate native headless session is the browser document.",
+      "evidence": [
+        "apps/photocraft-web/src/main.rs",
+        "apps/photocraft-web/src/web.rs"
+      ],
+      "source_urls": [
+        "https://github.com/storytold/photocraft/blob/main/apps/photocraft-web/src/main.rs",
+        "https://github.com/storytold/photocraft/blob/main/apps/photocraft-web/src/web.rs"
+      ]
+    },
+    "vectorcraft": {
+      "status": "No exported live-document JavaScript command dispatcher found in inspected main web shell",
+      "details": "Private WebShell, browser file picker/download/inbox; main.rs explicitly excludes TCP server. WebGPU with WebGL2 fallback.",
+      "evidence": [
+        "apps/vectorcraft-web/src/main.rs",
+        "apps/vectorcraft-web/src/web.rs"
+      ],
+      "source_urls": [
+        "https://github.com/storytold/vectorcraft/blob/main/apps/vectorcraft-web/src/main.rs",
+        "https://github.com/storytold/vectorcraft/blob/main/apps/vectorcraft-web/src/web.rs"
+      ]
+    },
+    "gridcraft": {
+      "status": "Existing same-origin iframe file bridge, no editing-command API in inspected bridge",
+      "details": "?host=parent and optional author. Receives gridcraft:open {name,bytes}; sends ready {version}, save {name,bytes}, dirty {dirty}, failed {error}. bytes ArrayBuffer/Uint8Array; output transferred ArrayBuffer. Save/Save As .xlsx and PDF exports reach parent. Both origin and parent identity checked.",
+      "evidence": [
+        "apps/gridcraft-web/src/host.rs",
+        "apps/gridcraft-web/src/main.rs"
+      ],
+      "source_urls": [
+        "https://github.com/storytold/gridcraft/blob/main/apps/gridcraft-web/src/host.rs",
+        "https://github.com/storytold/gridcraft/blob/main/apps/gridcraft-web/src/main.rs"
+      ]
+    },
+    "pdfcraft": {
+      "status": "Existing same-origin iframe file bridge, no editing-command API in inspected bridge",
+      "details": "?host=parent and optional author. Receives pdfcraft:open {name,bytes}; sends ready {version}, save {name,saveAs,bytes}, dirty {dirty}, failed {error}. ?file= opens same-origin or CORS-enabled URL. Both origin and parent identity checked.",
+      "evidence": [
+        "apps/pdfcraft-web/src/main.rs"
+      ],
+      "source_urls": [
+        "https://github.com/storytold/pdfcraft/blob/main/apps/pdfcraft-web/src/main.rs"
+      ]
+    },
+    "filmcraft": {
+      "status": "Existing live-document browser JavaScript automation API, strongest quick POC candidate",
+      "global": "window.filmcraft",
+      "methods": [
+        "request(method,params)",
+        "execute(command,params)",
+        "commands()",
+        "inspect()",
+        "screenshot(params)",
+        "importFiles(files)",
+        "importUrl(url,name?)",
+        "openProject(fileOrUrl)",
+        "files()",
+        "readFile(path)",
+        "info()"
+      ],
+      "details": "request sends ControlRequest to the live FilmcraftApp; execute maps to engine.execute. Action queue operates the same WebApp and replies are polled each UI frame. Promise result or rejection. File bytes are available through readFile as Uint8Array. Screenshot returns PNG base64, width, height.",
+      "release_verification": "v0.7.2 api.rs fetched and SHA-256 identical to main: 6bcbf1a23ffa9c20e5c5f65ea9c018508dbccb8237aa56a6c6a1b2126d144e50",
+      "evidence": [
+        "apps/filmcraft-web/src/api.rs",
+        "apps/filmcraft-web/src/lib.rs",
+        "docs/web.md",
+        "apps/filmcraft-web/tests/smoke.mjs"
+      ],
+      "source_urls": [
+        "https://github.com/storytold/filmcraft/blob/main/apps/filmcraft-web/src/api.rs",
+        "https://github.com/storytold/filmcraft/blob/main/apps/filmcraft-web/src/lib.rs",
+        "https://github.com/storytold/filmcraft/blob/main/docs/web.md",
+        "https://github.com/storytold/filmcraft/blob/main/apps/filmcraft-web/tests/smoke.mjs"
+      ]
+    },
+    "effectcraft": {
+      "status": "Existing live-document browser JavaScript automation API in inspected main source",
+      "global": "window.effectcraft",
+      "details": "request and execute wrap exported WASM request and forward ControlRequest to real UI. Also files/readFile/addFile/info and browser persistence helpers. Release asset exists; API parity with release was not separately checked.",
+      "evidence": [
+        "apps/effectcraft-web/src/api.rs",
+        "apps/effectcraft-web/src/lib.rs"
+      ],
+      "source_urls": [
+        "https://github.com/storytold/effectcraft/blob/main/apps/effectcraft-web/src/api.rs",
+        "https://github.com/storytold/effectcraft/blob/main/apps/effectcraft-web/src/lib.rs"
+      ]
+    }
+  },
+  "blender": {
+    "official": {
+      "download": "https://www.blender.org/download/",
+      "finding": "Official catalog lists native Windows, Windows ARM, macOS, Linux and source; no official browser/WASM or WASI release verified. This is a catalog/research finding, not proof no experimental work exists.",
+      "license": "GNU GPL; official COPYING refers to doc/license/GPL-license.txt (GPL v2 text). Do not classify Blender as permissively licensed ArtCraft software.",
+      "license_sources": [
+        "https://github.com/blender/blender/blob/main/COPYING",
+        "https://github.com/blender/blender/blob/main/doc/license/GPL-license.txt"
+      ]
+    },
+    "community": {
+      "repository": "https://github.com/HeyPuter/blender-wasm",
+      "demo": "https://developer.puter.com/labs/blender-web/",
+      "finding": "Separate community Blender-to-WebAssembly port, explicitly rendering locally in browser with WebGPU. Demo source loads compressed WASM and assets, uses Emscripten and CPython assets; not the official Blender distribution.",
+      "license": "Repository LICENSE contains GNU GPL version 2; downstream source/dependency obligations need separate review.",
+      "is_wasi": false,
+      "runtime_tested_in_this_research": false,
+      "requirements": [
+        "WebGPU adapter; UI warns software rendering is extremely slow",
+        "SharedArrayBuffer/pthreads and cross-origin isolation",
+        "COOP: same-origin; COEP: require-corp in Vite dev/preview config",
+        "Substantial asset/WASM download and evolving fork rather than demonstrated desktop feature parity"
+      ],
+      "sources": [
+        "https://github.com/HeyPuter/blender-wasm/blob/master/Makefile",
+        "https://github.com/HeyPuter/blender-wasm/blob/master/demo/src/main.js",
+        "https://github.com/HeyPuter/blender-wasm/blob/master/demo/vite.config.js",
+        "https://github.com/HeyPuter/blender-wasm/blob/master/LICENSE"
+      ]
+    },
+    "false_positive": {
+      "repository": "https://github.com/jtydhr88/blender-web",
+      "finding": "Different project uses a native GHOST backend to stream frames over WebSocket; not a local WASM build."
+    }
+  }
+}

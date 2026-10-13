@@ -1,0 +1,310 @@
+{
+  "tested_at_utc": "2026-10-13T17:43:23.941Z",
+  "browser": "140.0.7339.16",
+  "browser_checks": 34,
+  "unit_tests": 23,
+  "runtime_url": "https://github.com/storytold/filmcraft/releases/download/v0.7.2/filmcraft-web-0.7.2.zip",
+  "runtime_sha256": "48d4f48728fa6b5c028612a4b7f59a5832ff38d430c6a7bd417a2c77d75ae4f9",
+  "source_files": {
+    "src/index.js": "b4a6fc4eed0b553628fbf77e51a6987e565142b045bf608c0657e105fb44d843",
+    "src/index.d.ts": "4c120a17a548f364eb4f89f0cd17f23b0d62c489371f68270415ae7fd485aa5c",
+    "tests/client.test.js": "b5fba0c892f9a42bff33b458a7342f555b4c2c615f7bb331a8d58f9ee7ba45f6",
+    "tests/browser-acceptance.js": "1ded65b20943b954b62bdc7bd908e4305a8022251a4bd6e98e8242545defeb1d",
+    "tests/browser-e2e.py": "ae432ee56f8281c5d70af9f45af246576563633893e878fde272219174df7dbd"
+  },
+  "media_oracles": {
+    "sourceFrames": 12,
+    "exportFrames": 24,
+    "retime": 0.5,
+    "frameRepeatMeanAbsoluteError": 0.73046875,
+    "audioFrequencyHz": 219.375,
+    "audioRms": 0.12479999965993492,
+    "subjectiveListeningTested": false
+  },
+  "checks": [
+    {
+      "name": "wrong origin refused",
+      "ok": true,
+      "detail": {
+        "code": "ORIGIN",
+        "message": "editor origin mismatch"
+      }
+    },
+    {
+      "name": "source media imported",
+      "ok": true,
+      "detail": {
+        "errors": [],
+        "items": [
+          1
+        ],
+        "paths": [
+          "/files/poc-source.mp4"
+        ]
+      }
+    },
+    {
+      "name": "sequence created",
+      "ok": true,
+      "detail": {
+        "activeSequence": 8,
+        "dirty": true,
+        "name": "DCC browser same document",
+        "path": null,
+        "revision": 5,
+        "root": {
+          "children": [
+            {
+              "duration": 254016000000,
+              "item": 1,
+              "label": "Iris",
+              "name": "poc-source.mp4",
+              "type": "Movie"
+            },
+            {
+              "duration": 254016000000,
+              "item": 8,
+              "label": "Forest",
+              "name": "Browser original",
+              "type": "Sequence"
+            }
+          ],
+          "id": 0,
+          "name": "DCC browser same document"
+        },
+        "sourceItem": null
+      }
+    },
+    {
+      "name": "same live sequence edited",
+      "ok": true,
+      "detail": "Browser edited"
+    },
+    {
+      "name": "undo changed live document",
+      "ok": true
+    },
+    {
+      "name": "redo restored edit",
+      "ok": true
+    },
+    {
+      "name": "retime doubled timeline duration",
+      "ok": true,
+      "detail": 24
+    },
+    {
+      "name": "video retimed to half speed",
+      "ok": true
+    },
+    {
+      "name": "linked audio retimed together",
+      "ok": true
+    },
+    {
+      "name": "retime undo restores duration",
+      "ok": true
+    },
+    {
+      "name": "retime redo restores duration",
+      "ok": true
+    },
+    {
+      "name": "official visible UI shares sequence",
+      "ok": true,
+      "detail": {
+        "activeSequence": 8
+      }
+    },
+    {
+      "name": "native project bytes saved",
+      "ok": true,
+      "detail": 5622
+    },
+    {
+      "name": "path traversal refused",
+      "ok": true,
+      "detail": {
+        "code": "INVALID_ARGUMENT",
+        "message": "filename must be a simple basename"
+      }
+    },
+    {
+      "name": "overwrite refused",
+      "ok": true,
+      "detail": {
+        "code": "EXISTS",
+        "message": "refusing to overwrite a virtual file"
+      }
+    },
+    {
+      "name": "unowned reopen refused",
+      "ok": true,
+      "detail": {
+        "code": "DOCUMENT",
+        "message": "only unchanged native saves from this client may reopen"
+      }
+    },
+    {
+      "name": "pre-dispatch cancellation",
+      "ok": true,
+      "detail": {
+        "code": "CANCELLED",
+        "message": "cancelled before dispatch; not run"
+      }
+    },
+    {
+      "name": "cancelled mutation did not apply",
+      "ok": true
+    },
+    {
+      "name": "native save reopened same sequence",
+      "ok": true,
+      "detail": {
+        "activeSequence": 8,
+        "dirty": false,
+        "name": "browser-project",
+        "path": "/dcc/dcc-filmcraft-acceptance-20261013/browser-project.fcproj",
+        "revision": 12,
+        "root": {
+          "children": [
+            {
+              "duration": 254016000000,
+              "item": 1,
+              "label": "Iris",
+              "name": "poc-source.mp4",
+              "type": "Movie"
+            },
+            {
+              "duration": 508032000000,
+              "item": 8,
+              "label": "Forest",
+              "name": "Browser edited",
+              "type": "Sequence"
+            }
+          ],
+          "id": 0,
+          "name": "browser-project"
+        },
+        "sourceItem": null
+      }
+    },
+    {
+      "name": "reopen preserved edit",
+      "ok": true
+    },
+    {
+      "name": "reopen preserved retimed timeline",
+      "ok": true
+    },
+    {
+      "name": "h264 export job succeeded",
+      "ok": true,
+      "detail": {
+        "done": 24,
+        "etaSeconds": null,
+        "finished": true,
+        "id": 1,
+        "label": "Export browser-h264.mp4",
+        "offlineMedia": [],
+        "progress": 1,
+        "result": {
+          "bytes": 157887,
+          "frames": 24,
+          "path": "/dcc/dcc-filmcraft-acceptance-20261013/browser-h264.mp4",
+          "render_fps": 41.19110958551446,
+          "seconds": 0.58265
+        },
+        "status": "Done in 0.6s",
+        "total": 24
+      }
+    },
+    {
+      "name": "h264 exported bytes read",
+      "ok": true,
+      "detail": 157887
+    },
+    {
+      "name": "wav export job succeeded",
+      "ok": true,
+      "detail": {
+        "done": 2,
+        "etaSeconds": null,
+        "finished": true,
+        "id": 2,
+        "label": "Export browser-wav.wav",
+        "offlineMedia": [],
+        "progress": 1,
+        "result": {
+          "bytes": 384044,
+          "frames": 96000,
+          "path": "/dcc/dcc-filmcraft-acceptance-20261013/browser-wav.wav",
+          "render_fps": 5143316.367532815,
+          "seconds": 0.018665
+        },
+        "status": "Done in 0.0s",
+        "total": 2
+      }
+    },
+    {
+      "name": "wav exported bytes read",
+      "ok": true,
+      "detail": 384044
+    },
+    {
+      "name": "owned export cancellation reaches terminal cancelled state",
+      "ok": true,
+      "detail": {
+        "done": 13,
+        "etaSeconds": null,
+        "finished": true,
+        "id": 3,
+        "label": "Export cancelled-export.mp4",
+        "offlineMedia": [],
+        "progress": 0.5416666865348816,
+        "result": {
+          "error": "cancelled"
+        },
+        "status": "Exporting 24 frames (H.264)",
+        "total": 24
+      }
+    },
+    {
+      "name": "origin source session negatives rejected",
+      "ok": true
+    },
+    {
+      "name": "authorized same-window request accepted",
+      "ok": true
+    },
+    {
+      "name": "replay rejected",
+      "ok": true
+    },
+    {
+      "name": "message listener removed",
+      "ok": true
+    },
+    {
+      "name": "host error surfaced",
+      "ok": true,
+      "detail": "Error: unknown command `dcc.invalid.command`"
+    },
+    {
+      "name": "host stayed usable after error",
+      "ok": true
+    },
+    {
+      "name": "closed SDK refuses calls",
+      "ok": true,
+      "detail": {
+        "code": "CLOSED",
+        "message": "client is closed"
+      }
+    },
+    {
+      "name": "cleanup preserves visible user document",
+      "ok": true
+    }
+  ]
+}
