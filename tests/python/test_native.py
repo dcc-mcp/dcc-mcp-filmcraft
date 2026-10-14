@@ -442,3 +442,109 @@ def test_dangling_link_cannot_reserve_an_output(native, tmp_path):
         native._reserve("reserved.mp4")
     assert not target.exists()
     assert not native._reserved
+
+
+def test_owned_read_rejects_directory_replacement_during_open(native, monkeypatch):
+    path = native._reserve("result.mp4")
+    path.write_bytes(b"owned output")
+    original_open = os.open
+    moved = native.session_dir.with_name("original-session")
+    opened = []
+
+    def replace_then_open(target, flags, *args, **kwargs):
+        if Path(target) == path:
+            native.session_dir.rename(moved)
+            native.session_dir.mkdir()
+            path.write_bytes(b"replacement directory bytes")
+        fd = original_open(target, flags, *args, **kwargs)
+        opened.append(fd)
+        return fd
+
+    monkeypatch.setattr(os, "open", replace_then_open)
+    with pytest.raises(NativeError, match="directory identity") as error:
+        native._read_owned(path.name, 1024)
+    assert error.value.code == "SESSION"
+    with pytest.raises(OSError):
+        os.fstat(opened[0])
+    assert native.revoked
+    assert (moved / path.name).read_bytes() == b"owned output"
+    native.session_dir.rename(native.session_dir.with_name("replacement-session"))
+    moved.rename(native.session_dir)
+    with pytest.raises(NativeError, match="permanently revoked"):
+        run(native.call("inspect", {}))
+    assert native.commands_seen == []
+
+
+@pytest.mark.parametrize("nofollow", [True, False])
+def test_owned_read_rejects_file_replacement_during_open(native, monkeypatch, nofollow):
+    if not nofollow:
+        monkeypatch.delattr(os, "O_NOFOLLOW", raising=False)
+    path = native._reserve("result.mp4")
+    path.write_bytes(b"owned output")
+    replacement = native.session_dir / "replacement"
+    replacement.write_bytes(b"other output")
+    original_open = os.open
+
+    def replace_then_open(target, flags, *args, **kwargs):
+        if Path(target) == path:
+            replacement.replace(path)
+        return original_open(target, flags, *args, **kwargs)
+
+    monkeypatch.setattr(os, "open", replace_then_open)
+    with pytest.raises(NativeError, match="file identity") as error:
+        native._read_owned(path.name, 1024)
+    assert error.value.code == "SESSION"
+
+
+@pytest.mark.parametrize("change", ["contents", "same_length", "file", "directory"])
+def test_owned_read_rejects_mutation_during_read_and_closes_fd(native, monkeypatch, change):
+    if os.name == "nt" and change in {"file", "directory"}:
+        pytest.skip("Windows does not support these open-file replacement operations")
+    path = native._reserve("result.mp4")
+    path.write_bytes(b"owned output")
+    original_fdopen = os.fdopen
+    opened = []
+
+    class ChangingReader:
+        def __init__(self, descriptor, mode):
+            self.file = original_fdopen(descriptor, mode)
+            opened.append(descriptor)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return self.file.__exit__(*args)
+
+        def fileno(self):
+            return self.file.fileno()
+
+        def read(self, limit):
+            result = self.file.read(limit)
+            if change == "contents":
+                path.write_bytes(b"output changed during read")
+            elif change == "same_length":
+                before = path.stat()
+                path.write_bytes(b"other output")
+                assert path.stat().st_size == before.st_size
+                # Keep the timestamp regression independent of filesystem clock
+                # resolution; size alone cannot detect this same-length edit.
+                os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns + 1_000_000_000))
+            elif change == "file":
+                replacement = native.session_dir / "replacement"
+                replacement.write_bytes(b"other output")
+                replacement.replace(path)
+            else:
+                native.session_dir.rename(native.session_dir.with_name("original-session"))
+                native.session_dir.mkdir()
+                path.write_bytes(b"replacement directory bytes")
+            return result
+
+    monkeypatch.setattr(os, "fdopen", ChangingReader)
+    with pytest.raises(NativeError, match="changed") as error:
+        native._read_owned(path.name, 1024)
+    assert error.value.code == "SESSION"
+    assert native.revoked is (change == "directory")
+    assert len(opened) == 1
+    with pytest.raises(OSError):
+        os.fstat(opened[0])

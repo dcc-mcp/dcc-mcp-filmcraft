@@ -276,15 +276,35 @@ class NativeSession:
         if name not in self._reserved or Path(name).name != name:
             raise NativeError("SESSION", "file is not owned by this session")
         path = self.session_dir / name
-        if path.is_symlink():
-            raise NativeError("SESSION", "owned file was replaced by a symbolic link")
         try:
+            expected = path.lstat()
+            if stat.S_ISLNK(expected.st_mode):
+                raise NativeError("SESSION", "owned file was replaced by a symbolic link")
+            if not stat.S_ISREG(expected.st_mode) or expected.st_size > limit:
+                raise NativeError("LIMIT", "owned file is not regular or exceeds its size limit")
             fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
             with os.fdopen(fd, "rb") as f:
+                # An absolute-path open can race with directory replacement.
+                # Check the session again before reading any descriptor bytes,
+                # and bind that descriptor to the regular file we inspected.
+                self._guard_directory()
                 info = os.fstat(f.fileno())
+                if self._identity(info) != self._identity(expected):
+                    raise NativeError("SESSION", "owned file identity changed while opening")
                 if not stat.S_ISREG(info.st_mode) or info.st_size > limit:
                     raise NativeError("LIMIT", "owned file is not regular or exceeds its size limit")
                 data = f.read(limit + 1)
+                self._guard_directory()
+                after = os.fstat(f.fileno())
+                current = path.lstat()
+                if stat.S_ISLNK(current.st_mode) or self._identity(current) != self._identity(info):
+                    raise NativeError("SESSION", "owned file identity changed while reading")
+                if (info.st_size, info.st_mtime_ns, info.st_ctime_ns) != (
+                    after.st_size,
+                    after.st_mtime_ns,
+                    after.st_ctime_ns,
+                ):
+                    raise NativeError("SESSION", "owned file changed while reading")
         except OSError as exc:
             raise NativeError("SESSION", "owned file is unavailable") from exc
         if len(data) > limit:

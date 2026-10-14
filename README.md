@@ -98,6 +98,11 @@ its screenshot operation are unchanged. Process loss permanently revokes the
 native session; cached artifacts can still be rescued, but a replacement process
 never inherits permission to continue an uncertain edit.
 
+Native file reads bind the opened descriptor to the inspected file, recheck the
+session directory and reject observed replacement or changes during the read
+before publishing artifact bytes. This is not a sandbox for hostile concurrent
+writers; keep the workspace operator-controlled.
+
 [Native workflow, bounds and exact mode comparison](docs/native-mode.md).
 
 ## Use in the editor's origin
