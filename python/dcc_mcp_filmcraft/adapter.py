@@ -1,4 +1,4 @@
-"""Bounded Core registry/dispatcher plus a single private browser event-loop thread."""
+"""Bounded Core registry/dispatcher plus one private host-session event loop."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from dcc_mcp_core import ToolDispatcher, ToolRegistry
 from jsonschema import Draft202012Validator, ValidationError
 
 from .browser import BrowserSession
-from .catalog import TOOLS
+from .catalog import tools_for_mode
 
 
 class FilmCraftAdapter:
@@ -20,14 +20,18 @@ class FilmCraftAdapter:
 
     def __init__(self, browser, *, wait_timeout=75):
         self.browser = browser
+        self.session = browser
+        self.mode = getattr(browser, "mode", "browser")
+        self.skill_name = "filmcraft-browser" if self.mode == "browser" else "filmcraft-native"
+        self.tool_specs = tools_for_mode(self.mode)
         self.wait_timeout = wait_timeout
         self.registry = ToolRegistry()
         self.dispatcher = ToolDispatcher(self.registry)
         self.dispatcher.skip_empty_schema_validation = False
-        self._specs = {spec["name"]: spec for spec in TOOLS}
-        self._validators = {spec["name"]: Draft202012Validator(spec["input_schema"]) for spec in TOOLS}
+        self._specs = {spec["name"]: spec for spec in self.tool_specs}
+        self._validators = {spec["name"]: Draft202012Validator(spec["input_schema"]) for spec in self.tool_specs}
         self._loop = asyncio.new_event_loop()
-        self._thread = threading.Thread(target=self._loop.run_forever, name="filmcraft-browser", daemon=True)
+        self._thread = threading.Thread(target=self._loop.run_forever, name="filmcraft-" + self.mode, daemon=True)
         self._gate = threading.Lock()
         self._receipt_lock = threading.Lock()
         self._receipt = None
@@ -38,13 +42,13 @@ class FilmCraftAdapter:
         self._reconcile_lock = threading.Lock()
         self._closed = False
         self._thread.start()
-        for spec in TOOLS:
+        for spec in self.tool_specs:
             name = spec["name"]
             self.registry.register(
                 name,
                 description=spec["description"],
                 dcc="filmcraft",
-                skill_name="filmcraft-browser",
+                skill_name=self.skill_name,
                 input_schema=json.dumps(spec["input_schema"]),
                 output_schema=json.dumps({"type": "object"}),
                 execution="sync",
@@ -65,6 +69,18 @@ class FilmCraftAdapter:
 
     def _submit(self, coroutine):
         return asyncio.run_coroutine_threadsafe(coroutine, self._loop)
+
+    @classmethod
+    def launch_native(cls, executable, *, workspace, evidence_dir=None):
+        from .native import NativeSession
+
+        adapter = cls(NativeSession(executable, workspace=workspace, evidence_dir=evidence_dir))
+        try:
+            adapter._submit(adapter.session.start()).result(timeout=150)
+            return adapter
+        except BaseException:
+            adapter.close()
+            raise
 
     def _handler(self, operation):
         return lambda params: self._execute(operation, params)
@@ -141,7 +157,7 @@ class FilmCraftAdapter:
         with invocation_lock:
             if invocation and invocation["cancelled"]:
                 self._gate.release()
-                return {"ok": False, "code": "CANCELLED", "error": "cancelled before browser dispatch; not run"}
+                return {"ok": False, "code": "CANCELLED", "error": "cancelled before host dispatch; not run"}
         with self._receipt_lock:
             if self._receipt and self._receipt.get("uncertain") and operation != "reconcile":
                 self._gate.release()

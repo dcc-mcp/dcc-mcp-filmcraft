@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "dcc-mcp-filmcraft"
 version = "0.1.0"
-description = "Typed Core/MCP adapter for an owned visible FilmCraft browser document"
+description = "Typed Core/MCP adapter for owned FilmCraft browser and native engine sessions"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"

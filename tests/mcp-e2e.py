@@ -15,12 +15,14 @@ from mcp.client.stdio import stdio_client
 
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
-parser.add_argument('--runtime-zip', type=Path, required=True)
+parser.add_argument('--runtime-zip', type=Path)
+parser.add_argument('--mode', choices=['browser', 'native'], default='browser')
+parser.add_argument('--native-cli', type=Path)
 parser.add_argument('--chromium')
 parser.add_argument('--output', type=Path, default=ROOT/'evidence/mcp')
 args = parser.parse_args()
 args.output.mkdir(parents=True, exist_ok=True)
-report = {'checks': [], 'transport': 'genuine MCP stdio', 'core_version': __import__('dcc_mcp_core').__version__}
+report = {'checks': [], 'mode': args.mode, 'transport': 'genuine MCP stdio', 'core_version': __import__('dcc_mcp_core').__version__}
 
 
 def check(ok, name, detail=None):
@@ -32,9 +34,19 @@ def check(ok, name, detail=None):
 async def main():
     source = args.output/'source.mp4'
     subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-f','lavfi','-i','testsrc2=size=160x90:rate=12','-f','lavfi','-i','sine=frequency=440:sample_rate=48000','-t','1','-c:v','libx264','-threads','1','-pix_fmt','yuv420p','-c:a','aac','-b:a','64k','-movflags','+faststart',str(source)],check=True)
-    command = ['-m','dcc_mcp_filmcraft.cli','serve','--runtime-zip',str(args.runtime_zip.resolve()),'--headless','--evidence-dir',str(args.output.resolve())]
-    if args.chromium:
-        command += ['--chromium', str(Path(args.chromium).resolve())]
+    if args.mode == 'native':
+        if not args.native_cli:
+            parser.error('--mode native requires --native-cli')
+        command = ['-m','dcc_mcp_filmcraft.cli','serve','--mode','native','--native-cli',
+                   str(args.native_cli.resolve()),'--workspace',str((args.output/'workspace').resolve()),
+                   '--evidence-dir',str(args.output.resolve())]
+    else:
+        if not args.runtime_zip:
+            parser.error('browser mode requires --runtime-zip')
+        command = ['-m','dcc_mcp_filmcraft.cli','serve','--runtime-zip',str(args.runtime_zip.resolve()),
+                   '--headless','--evidence-dir',str(args.output.resolve())]
+        if args.chromium:
+            command += ['--chromium', str(Path(args.chromium).resolve())]
     env = {**os.environ, 'PYTHONPATH': str(ROOT/'python')}
     params = StdioServerParameters(command=sys.executable,args=command,env=env)
     with (args.output/'stderr.log').open('w') as errlog:
@@ -43,11 +55,13 @@ async def main():
                 initialized = await client.initialize()
                 report['protocol'] = initialized.protocolVersion
                 tools = (await client.list_tools()).tools
-                check(len(tools)==19,'19 typed Core-backed tools listed',[x.name for x in tools])
+                expected_count=18 if args.mode=='native' else 19
+                check(len(tools)==expected_count,str(expected_count)+' typed Core-backed tools listed',[x.name for x in tools])
                 check(all(x.inputSchema.get('additionalProperties') is False for x in tools),'all tool schemas reject extra properties')
                 prompts=(await client.list_prompts()).prompts
-                check([p.name for p in prompts]==['filmcraft-browser'],'MCP skill prompt discoverable')
-                prompt=await client.get_prompt('filmcraft-browser')
+                skill='filmcraft-native' if args.mode=='native' else 'filmcraft-browser'
+                check([p.name for p in prompts]==[skill],'mode-specific MCP skill prompt discoverable')
+                prompt=await client.get_prompt(skill)
                 check('TIMEOUT' in prompt.messages[0].content.text,'skill prompt delivers safety workflow')
                 async def call(name, parameters=None):
                     result = await client.call_tool('filmcraft_'+name, parameters or {})
@@ -104,7 +118,11 @@ async def main():
                 rejected=await client.call_tool('filmcraft_read_export',{'path':cancelled['path']})
                 check(rejected.isError,'cancelled export cannot become an artifact')
                 await call('reconcile')
-                await artifact(await call('capture_view'),'visible-editor.png')
+                if args.mode=='native':
+                    rejected=await client.call_tool('filmcraft_capture_view',{})
+                    check(rejected.isError,'native headless does not impersonate a GUI screenshot')
+                else:
+                    await artifact(await call('capture_view'),'visible-editor.png')
                 await call('disconnect')
     for name in ['export.mp4','export.wav']:
         info=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_format','-show_streams','-of','json',str(args.output/name)]))

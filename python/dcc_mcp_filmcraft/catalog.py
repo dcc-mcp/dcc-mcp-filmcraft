@@ -1,5 +1,7 @@
 """A reviewed bounded editing surface, not a copy of the upstream command catalog."""
 
+from copy import deepcopy
+
 NAME = {"type": "string", "minLength": 1, "maxLength": 128}
 BASENAME = {"type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$"}
 ID = {"type": "integer", "minimum": 1, "maximum": 9007199254740991}
@@ -91,3 +93,21 @@ TOOLS = [
     ),
     tool("disconnect", "Disconnect the typed client only after exports settle; preserves the document and files."),
 ]
+
+
+def tools_for_mode(mode):
+    """A headless engine cannot truthfully advertise a live editor screenshot."""
+    if mode == "browser":
+        return deepcopy(TOOLS)
+    if mode != "native-headless":
+        raise ValueError("unsupported FilmCraft execution mode")
+    tools = [deepcopy(spec) for spec in TOOLS if spec["operation"] != "capture_view"]
+    descriptions = {
+        "inspect": "Inspect the same owned native FilmCraft engine session and its mode capabilities.",
+        "list_jobs": "Read actual native engine export jobs and terminal results.",
+        "import_media": "Import authorized base64 media bytes into this native session, at most 16 MiB.",
+        "disconnect": "Disconnect after owned exports settle; preserve saved native files and cached artifacts.",
+    }
+    for spec in tools:
+        spec["description"] = descriptions.get(spec["operation"], spec["description"])
+    return tools

@@ -1,15 +1,14 @@
 # DCC-MCP FilmCraft
 
-Experimental DCC-MCP Core adapter, genuine MCP stdio server, and typed browser SDK for the **same visible FilmCraft WebAssembly editor**.
+Experimental DCC-MCP Core adapter and genuine MCP stdio server for **FilmCraft Web/WASM and a native local engine**, with a typed browser SDK.
 [中文](README.zh-CN.md)
 
-The Python adapter registers 19 bounded tools through DCC-MCP Core 0.20.44 and
-serves them over the official MCP SDK stdio transport. One owned browser page
-persists across agent calls. The JavaScript SDK can also be embedded directly.
-There is no arbitrary-code tool, control socket, HTTP command gateway, or hidden
-headless-CLI replacement. This is unreleased experimental integration work.
+The Python adapter uses DCC-MCP Core 0.20.44 and the official MCP SDK stdio transport. Browser mode exposes 19 bounded tools on one owned editor page. Native mode exposes 18 tools on one persistent, owned `filmcraft-cli mcp` process. Each mode has its own packaged skill and acceptance job. No generic code/command tool, control socket or HTTP command gateway is exposed. This is unreleased experimental integration work.
 
 ## Verified scope
+
+The browser and native headless paths are tested separately. Native desktop GUI control is not implemented or qualified; a real cloud GUI launch failed to paint because its X11 shared-memory display was unavailable. Headless success does not establish GUI success. See the [19-operation mode comparison](docs/native-mode.md).
+
 
 Official FilmCraft v0.7.2 browser ZIP, SHA-256
 `48d4f48728fa6b5c028612a4b7f59a5832ff38d430c6a7bd417a2c77d75ae4f9`.
@@ -71,6 +70,35 @@ existing user tab. `disconnect` preserves the page and virtual files. Ending the
 stdio process closes its disposable browser, so retrieve necessary artifacts first.
 Core gateway discovery, desktop TCP, restart recovery and WASI are not implemented.
 See [MCP acceptance](docs/mcp-acceptance.md).
+
+## Run the native local engine
+
+```sh
+dcc-mcp-filmcraft serve --mode native \
+  --native-cli /path/to/filmcraft-cli --workspace /path/to/filmcraft-work
+```
+
+This launches the official CLI as one persistent native engine over a private
+stdin/stdout pipe. It opens no window and no TCP control endpoint. The workspace
+is trusted launcher configuration; each session creates a new private directory.
+Agent tools receive only owned virtual handles and immutable artifact IDs, never
+an arbitrary OS-file API. Saved `.fcproj`, media and exports remain on disk when
+the adapter closes. Unsaved in-memory edits end with the owned process.
+
+Use the official FilmCraft 0.7.2 CLI. The acceptance job verifies both the Linux
+release archive and executable SHA-256 before use; the adapter never downloads a
+runtime. The configured executable is trusted code, not an OS-sandboxed plugin.
+Only Linux native runtime behavior is currently qualified; platform unit tests do
+not establish actual macOS/Windows native-host coverage.
+
+MCP clients receive `filmcraft-native` instead of `filmcraft-browser`. The same 18
+editing/artifact operations are available. `filmcraft_capture_view` is absent:
+a headless engine has no editor window to screenshot. Existing browser mode and
+its screenshot operation are unchanged. Process loss permanently revokes the
+native session; cached artifacts can still be rescued, but a replacement process
+never inherits permission to continue an uncertain edit.
+
+[Native workflow, bounds and exact mode comparison](docs/native-mode.md).
 
 ## Use in the editor's origin
 

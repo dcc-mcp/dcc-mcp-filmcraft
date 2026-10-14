@@ -1,6 +1,6 @@
 # dcc-mcp-filmcraft
 
-Experimental Core-backed MCP stdio adapter and browser SDK for the official FilmCraft WASM editor. This repository
+Experimental Core-backed MCP stdio adapter for official FilmCraft Web/WASM and native CLI, plus a browser SDK. This repository
 is not a fork and does not ship the vendor binary. The JavaScript API operates
 the same `FilmcraftApp` control queue that draws the visible editor.
 
@@ -12,9 +12,10 @@ upstream AGENTS.md before changing upstream source. No upstream patch is require
 - Keep origin, Window/Document/API identity, revision and request-session checks.
 - Never expose a localhost gateway, arbitrary execute endpoint, secret, or token.
 - Never replay an uncertain mutation. Keep its receipt and settle it explicitly.
-- Use bytes in the browser virtual filesystem. Desktop CLI/stdin and WASI are
-  different capabilities and cannot be claimed from this POC.
-- Preserve user documents and virtual files when disconnecting. Cancel only jobs
+- Browser mode uses its virtual filesystem; native mode owns one persistent CLI
+  stdio process and a new private workspace subdirectory. Test each separately.
+  Headless native CLI is not desktop GUI coverage. WASI remains unsupported.
+- Preserve user documents, native session files and virtual files on disconnect. Cancel only jobs
   recorded by this client, then await terminal status before closing.
 - Keep EN/ZH user guidance consistent. Use conventional commits and Draft PRs.
 - No publish/release/merge/deployment is implied by a passing test.
@@ -34,3 +35,5 @@ validation; Core's direct validator alone does not enforce every keyword. Keep
 one browser event loop, private-pipe control, fixed original-realm handles and
 per-request cancellation ownership. No HTTP control gateway is allowed; the
 pinned static-only runtime asset server is not a command interface.
+
+Native acceptance: `python tests/mcp-e2e.py --mode native --native-cli /official/path --output evidence/native`. Native host unit integration probes are opt-in through `FILMCRAFT_NATIVE_CLI`; default unit tests remain offline. Never expose generic upstream MCP tools or attach to an arbitrary desktop control port. Read docs/native-mode.md before modifying native.py.

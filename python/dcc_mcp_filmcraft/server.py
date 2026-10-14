@@ -7,12 +7,11 @@ from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
 
 from . import __version__
-from .catalog import TOOLS
 
 
 def build_server(adapter):
     server = Server("dcc-mcp-filmcraft", version=__version__)
-    specs = {spec["name"]: spec for spec in TOOLS}
+    specs = {spec["name"]: spec for spec in adapter.tool_specs}
 
     @server.list_tools()
     async def list_tools():
@@ -47,17 +46,17 @@ def build_server(adapter):
     async def list_prompts():
         return [
             types.Prompt(
-                name="filmcraft-browser", description="Safe same-document FilmCraft create/edit/save/export workflow"
+                name=adapter.skill_name, description="Mode-specific FilmCraft create/edit/save/export workflow"
             )
         ]
 
     @server.get_prompt()
     async def get_prompt(name, arguments):
-        if name != "filmcraft-browser":
+        if name != adapter.skill_name:
             raise ValueError("unknown prompt")
         from importlib.resources import files
 
-        text = files("dcc_mcp_filmcraft").joinpath("skills", "filmcraft-browser", "SKILL.md").read_text()
+        text = files("dcc_mcp_filmcraft").joinpath("skills", adapter.skill_name, "SKILL.md").read_text()
         return types.GetPromptResult(
             messages=[types.PromptMessage(role="user", content=types.TextContent(type="text", text=text))]
         )

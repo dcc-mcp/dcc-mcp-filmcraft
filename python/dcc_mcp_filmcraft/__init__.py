@@ -1,4 +1,4 @@
-"""FilmCraft Core/MCP browser adapter."""
+"""FilmCraft Core/MCP browser and native-engine adapter."""
 
 __version__ = "0.1.0"
 
