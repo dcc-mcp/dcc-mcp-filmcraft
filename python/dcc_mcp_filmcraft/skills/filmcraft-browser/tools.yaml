@@ -1,0 +1,358 @@
+{
+  "tools": [
+    {
+      "name": "filmcraft_inspect",
+      "description": "Inspect the same owned FilmCraft browser document.",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "read_only": true
+    },
+    {
+      "name": "filmcraft_inspect_sequence",
+      "description": "Read the current sequence and clip IDs.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "sequence"
+        ],
+        "additionalProperties": false
+      },
+      "read_only": true
+    },
+    {
+      "name": "filmcraft_create_project",
+      "description": "Create only in an empty clean editor; never replaces work.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "read_only": false
+    },
+    {
+      "name": "filmcraft_import_media",
+      "description": "Import one authorized base64 media file, at most 16 MiB; never reads OS paths.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[^/\\\\]{1,128}\\.(mp4|mov|webm|png|jpg|jpeg|wav)$"
+          },
+          "data": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 22369624
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "read_only": false
+    },
+    {
+      "name": "filmcraft_create_sequence",
+      "description": "Create a sequence from an imported media item.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "from_item": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "name",
+          "from_item"
+        ],
+        "additionalProperties": false
+      },
+      "read_only": false
+    },
+    {
+      "name": "filmcraft_rename_item",
+      "description": "Rename a project item and read back its new name.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "item",
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "read_only": false
+    },
+    {
+      "name": "filmcraft_set_playback_rate",
+      "description": "Set a clip and linked audio rate, 25\u2013400 percent; no concurrent UI edits.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "clip": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "percent": {
+            "type": "integer",
+            "minimum": 25,
+            "maximum": 400
+          }
+        },
+        "required": [
+          "sequence",
+          "clip",
+          "percent"
+        ],
+        "additionalProperties": false
+      },
+      "read_only": false
+    },
+    {
+      "name": "filmcraft_undo",
+      "description": "Undo the last edit in the unchanged owned document.",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "read_only": false
+    },
+    {
+      "name": "filmcraft_redo",
+      "description": "Redo the last edit in the unchanged owned document.",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "read_only": false
+    },
+    {
+      "name": "filmcraft_save_project",
+      "description": "Save new native .fcproj bytes; returns an immutable artifact reference.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "read_only": false
+    },
+    {
+      "name": "filmcraft_reopen_project",
+      "description": "Reopen an unchanged save owned by this session, with its imported media still present.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "read_only": false
+    },
+    {
+      "name": "filmcraft_export_media",
+      "description": "Queue a new owned native export; use list_jobs until terminal before reading.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "format": {
+            "enum": [
+              "h264",
+              "wav"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "sequence",
+          "format"
+        ],
+        "additionalProperties": false
+      },
+      "read_only": false
+    },
+    {
+      "name": "filmcraft_list_jobs",
+      "description": "Read actual browser export jobs and terminal results.",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "read_only": true
+    },
+    {
+      "name": "filmcraft_cancel_export",
+      "description": "Cancel only an export owned by this session; observe terminal state.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "job": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "job"
+        ],
+        "additionalProperties": false
+      },
+      "read_only": false
+    },
+    {
+      "name": "filmcraft_read_export",
+      "description": "Capture bounded bytes from an owned completed export into an immutable artifact.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "read_only": true
+    },
+    {
+      "name": "filmcraft_read_artifact",
+      "description": "Read a bounded base64 chunk of a session-owned artifact; no arbitrary filesystem access.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "artifact": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 33554432
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 262144
+          }
+        },
+        "required": [
+          "artifact",
+          "offset",
+          "size"
+        ],
+        "additionalProperties": false
+      },
+      "read_only": true
+    },
+    {
+      "name": "filmcraft_capture_view",
+      "description": "Capture pixels of the same live editor into an immutable PNG artifact.",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "read_only": true
+    },
+    {
+      "name": "filmcraft_reconcile",
+      "description": "Read the original uncertain operation receipt without replay or reacquiring authority.",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "read_only": true
+    },
+    {
+      "name": "filmcraft_disconnect",
+      "description": "Disconnect the typed client only after exports settle; preserves the document and files.",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "read_only": false
+    }
+  ]
+}

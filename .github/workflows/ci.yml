@@ -1,0 +1,97 @@
+name: CI
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  sdk:
+    name: SDK / Node ${{ matrix.node }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        node: ['22', '24']
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm pack --dry-run
+  browser:
+    name: Official browser WASM acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m playwright install --with-deps chromium
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: python tests/browser-e2e.py
+      - name: Download pinned official runtime
+        run: python -c "from urllib.request import urlretrieve; urlretrieve('https://github.com/storytold/filmcraft/releases/download/v0.7.2/filmcraft-web-0.7.2.zip', 'runtime.zip')"
+      - run: python tests/mcp-e2e.py --runtime-zip runtime.zip
+      - run: python tests/mcp-lifecycle.py --runtime-zip runtime.zip
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: filmcraft-browser-evidence
+          path: evidence/
+          retention-days: 14
+
+  python:
+    name: Core MCP / Python ${{ matrix.python }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        python: ['3.10', '3.12']
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m ruff check python tests/python scripts
+      - run: python -m ruff format --check python tests/python scripts
+      - run: python -m pytest
+      - run: python -m build
+      - run: dcc-mcp-filmcraft status
+
+  native:
+    name: Official native CLI Core MCP acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e ".[dev]"
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: python scripts/fetch-native-runtime.py
+      - name: Verify actual native lifecycle and loss recovery
+        run: FILMCRAFT_NATIVE_CLI="$PWD/runtime/filmcraft-cli" python -m pytest tests/python/test_native.py
+      - name: Create, edit, save, reopen and export through genuine Core MCP
+        run: python tests/mcp-e2e.py --mode native --native-cli runtime/filmcraft-cli --output evidence/native
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: filmcraft-native-evidence
+          path: evidence/native/
+          retention-days: 14
