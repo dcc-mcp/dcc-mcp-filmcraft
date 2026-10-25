@@ -5,7 +5,7 @@ import sys
 
 commands = [
     "file.open",
-    "file.saveAs",
+    "file.saveCopy",
     "project.inspect",
     "sequence.inspect",
     "media.findMissing",

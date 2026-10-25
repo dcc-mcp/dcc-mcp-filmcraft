@@ -91,3 +91,35 @@ video/audio thresholds remain unchanged.
 原失败证据及旧期望保留；仅改为严格整数0，findMissing仍要求空数组，并显式要求
 terminal export 的 offlineMedia=[]。这不是厂商权限/资源拒绝，也不是执行后删除
 画音检查。第二轮必须全新自有A→B，不重放已关闭的原进程操作。
+
+## Executed delivery-copy protocol correction (6db4 qualification)
+
+The next run, head `6db4d091de13b081756378ff58ef8b547b684b57`, passed A's
+official zero-missing open, findMissing, raw-status shape and clean readback.
+`file.saveAs` completed a 5,612-byte write, then the full-project semantic hash
+failed. A PID 3656 exited 0 with no cleanup error; B never started. The actual
+saved bytes were not retained in that artifact. The size difference matches the
+known rename behavior, but it is not evidence that only two fields changed.
+
+Exact `commands.rs:4334-4345` intentionally renames `project.name` and the root
+bin name from the new file stem when `adopt=true`, before encoding. The reviewed
+fixture names are `mcp-project`; the A/B target basenames differ. Official
+`file.saveCopy` (`commands.rs:1501-1503`) calls the same writer with `adopt=false`
+and bypasses that rename. Delivery now uses this copy command while retaining
+the exact same target paths, entire project hash, fixture/source bytes,
+isolation/cwd/status gates and original decoded thresholds. No label field is
+excluded or normalized to make the semantic hash pass. The mutation is a fresh
+owned A/B run, not replay of the closed prior process.
+
+Each new owned saved project is read with the existing bounded/no-follow
+descriptor guard and its exact bytes retained as internal
+`A.saved-project.unadmitted.bin` / `B.saved-project.unadmitted.bin` before model
+admission. Collection errors are secondary and never hide the model's primary
+failure. A failed model never returns bytes for B or user publication; these
+diagnostic files never enter the user-facing bundle. Successfully admitted B
+bytes are retained in memory for the final user copy.
+
+第二轮执行后的协议修正：SaveAs 本来就会按新文件名重命名工程及根bin，故与本任务
+保留全图字段冲突。改用官方 SaveCopy(adopt=false)，目录/文件名和全图hash不变，
+不放松画音门槛。原saved bytes未留，不能断言只有两字段变化；原失败完整保留。
+新输出先保留有界FD快照到internal-only，未admitted绝不送入B或用户包。

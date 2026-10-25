@@ -296,3 +296,66 @@ def test_terminal_export_requires_explicit_empty_offline_list(tmp_path, offline)
     else:
         with pytest.raises(AssertionError, match="no offline media"):
             asyncio.run(case.terminal_export(Fixture(), 8, output, "h264", []))
+
+
+def test_official_save_copy_preserves_the_full_graph_contract():
+    import copy
+
+    original = template()
+    # Exact 0.12 write_project semantics: adopt=true renames both labels before
+    # encode; adopt=false bypasses that block. This is a source-level regression,
+    # not reconstruction of the missing 6db4 saved output.
+    save_as = copy.deepcopy(original)
+    save_as["project"]["name"] = "project"
+    save_as["project"]["root"]["name"] = "project"
+    with pytest.raises(ValueError, match="non-path project semantics"):
+        case.inspect_project(json.dumps(save_as).encode())
+    save_copy = copy.deepcopy(original)
+    assert case.inspect_project(json.dumps(save_copy).encode()) == original
+    assert case.SEMANTIC_SHA == "8a6bf446e49a8aa1d7069af18a634898300cf42427ca96f5a5f5ed427cec98a1"
+    assert "file.saveCopy" in case.COMMANDS and "file.saveAs" not in case.COMMANDS
+
+
+def test_owned_saved_snapshot_retains_exact_bytes_internally(tmp_path):
+    raw = (case.FIXTURE / "project.fcproj").read_bytes()
+    source = tmp_path / "saved.fcproj"
+    source.write_bytes(raw)
+    internal = tmp_path / "internal"
+    internal.mkdir()
+    report = {}
+    assert case.inspect_saved_project(source, "A", internal, report) == raw
+    assert (internal / "A.saved-project.unadmitted.bin").read_bytes() == raw
+    assert report["saved_project_snapshots"]["A"]["profile_admitted"] is True
+    assert report["saved_project_snapshots"]["A"]["snapshot_published"] is False
+
+
+def test_unadmitted_snapshot_never_returns_for_b_or_publication(tmp_path):
+    source = tmp_path / "invalid.fcproj"
+    value = template()
+    value["project"]["name"] = "changed"
+    raw = json.dumps(value).encode()
+    source.write_bytes(raw)
+    internal = tmp_path / "internal"
+    internal.mkdir()
+    report = {}
+    with pytest.raises(ValueError, match="non-path project semantics"):
+        case.inspect_saved_project(source, "A", internal, report)
+    assert (internal / "A.saved-project.unadmitted.bin").read_bytes() == raw
+    assert report["saved_project_snapshots"]["A"]["profile_admitted"] is False
+    assert report["saved_project_snapshots"]["A"]["snapshot_published"] is False
+
+
+def test_snapshot_error_is_secondary_to_original_admission_failure(tmp_path):
+    value = template()
+    value["project"]["name"] = "changed"
+    source = tmp_path / "invalid.fcproj"
+    source.write_text(json.dumps(value))
+    internal = tmp_path / "internal"
+    internal.mkdir()
+    sentinel = internal / "A.saved-project.unadmitted.bin"
+    sentinel.write_bytes(b"existing evidence must remain")
+    report = {}
+    with pytest.raises(ValueError, match="non-path project semantics"):
+        case.inspect_saved_project(source, "A", internal, report)
+    assert sentinel.read_bytes() == b"existing evidence must remain"
+    assert "FileExistsError" in report["saved_project_snapshots"]["A"]["diagnostic_error"]

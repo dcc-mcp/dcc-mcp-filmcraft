@@ -45,7 +45,7 @@ MAX_RPC = 4 * 1024 * 1024
 MAX_OUTPUT = 32 * 1024 * 1024
 COMMANDS = {
     "file.open",
-    "file.saveAs",
+    "file.saveCopy",
     "project.inspect",
     "sequence.inspect",
     "media.findMissing",
@@ -159,6 +159,28 @@ def inspect_project(raw):
     if semantic != SEMANTIC_SHA:
         raise ValueError("non-path project semantics differ from the exact f1 work")
     return value
+
+
+def inspect_saved_project(path, label, internal, report):
+    """Retain only bounded descriptor-bound bytes internally before admission."""
+    if label not in {"A", "B"}:
+        raise ValueError("unknown owned snapshot phase")
+    raw = read_regular(path, MAX_PROJECT)
+    snapshot = {
+        "bytes": len(raw),
+        "sha256": digest(raw),
+        "profile_admitted": False,
+        "snapshot_published": False,
+    }
+    report.setdefault("saved_project_snapshots", {})[label] = snapshot
+    try:
+        write_new(Path(internal) / (label + ".saved-project.unadmitted.bin"), raw)
+    except Exception as exc:
+        snapshot["diagnostic_error"] = repr(exc)
+    # A snapshot error is secondary; the original admission error wins.
+    inspect_project(raw)
+    snapshot["profile_admitted"] = True
+    return raw
 
 
 def directory_identity(path):
@@ -612,9 +634,9 @@ async def run_case(executable, output, source_commit):
         ) as client:
             identities.append(await client.initialize())
             await inspect_online(client, a / "candidate.fcproj", checks, report)
-            await client.command_call("file.saveAs", {"path": str(a / "project.fcproj")})
-            saved_a = read_regular(a / "project.fcproj", MAX_PROJECT)
-            inspect_project(saved_a)
+            await client.command_call("file.saveCopy", {"path": str(a / "project.fcproj")})
+            check_identity(a, identity_a)
+            saved_a = inspect_saved_project(a / "project.fcproj", "A", internal, report)
             require(
                 checks, (await client.command_call("project.inspect")).get("dirty") is False, "A official save is clean"
             )
@@ -654,8 +676,9 @@ async def run_case(executable, output, source_commit):
             await inspect_online(client, b / "project.fcproj", checks, report)
             sequence = await client.command_call("sequence.inspect", {"item": 8})
             report["sequence"] = sequence
-            await client.command_call("file.saveAs", {"path": str(b / "reopened.fcproj")})
-            inspect_project(read_regular(b / "reopened.fcproj", MAX_PROJECT))
+            await client.command_call("file.saveCopy", {"path": str(b / "reopened.fcproj")})
+            check_identity(b, identity_b)
+            saved_b = inspect_saved_project(b / "reopened.fcproj", "B", internal, report)
             for fmt, name in (("h264", "export.mp4"), ("wav", "export.wav")):
                 await terminal_export(client, 8, b / name, fmt, checks)
             jobs = await client.command_call("jobs.list")
@@ -693,7 +716,7 @@ async def run_case(executable, output, source_commit):
         user = output / "user-facing"
         user.mkdir()
         user_files = {
-            "reopened.fcproj": read_regular(b / "reopened.fcproj", MAX_PROJECT),
+            "reopened.fcproj": saved_b,
             MEDIA: source,
             "export.mp4": read_regular(b / "export.mp4", MAX_OUTPUT),
             "export.wav": read_regular(b / "export.wav", MAX_OUTPUT),
