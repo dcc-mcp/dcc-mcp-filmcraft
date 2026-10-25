@@ -59,6 +59,8 @@ Readback requires a recorded export path and validates actual returned bytes.
 - Browser virtual storage/recovery/OPFS differs from desktop paths and restart recovery
 - A native project references imported media; saving it does not package that media
 - Reopen proof is same-session with the original media still available
+- Browser mode rejects `restart_native`; the native-only intentional owned-child
+  transition does not restore a destroyed browser realm or add browser recovery
 - CPU/WebGL2 software path tested; WebGPU, hardware decode, huge projects, codecs,
   cross-restart media relinking and subjective audio quality are not broadly qualified
 - H.264/AAC source/software licensing is distinct from patent or commercial codec

@@ -194,6 +194,8 @@ class BrowserSession:
         return value
 
     async def call(self, operation, params):
+        if operation == "reopen_project" and "restart_native" in params:
+            raise BrowserError("UNSUPPORTED", "intentional native child restart is unavailable in browser mode")
         if operation == "read_artifact":
             data = self._artifacts.get(params["artifact"])
             if data is None:

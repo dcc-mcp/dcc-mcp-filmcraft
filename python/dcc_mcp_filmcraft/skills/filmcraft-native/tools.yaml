@@ -196,13 +196,17 @@
     },
     {
       "name": "filmcraft_reopen_project",
-      "description": "Reopen an unchanged save owned by this session, with its imported media still present.",
+      "description": "Reopen an unchanged save owned by this session, with its imported media still present. restart_native=true explicitly ends a healthy owned child and opens this verified save in a new owned native child; never recovers process loss.",
       "input_schema": {
         "type": "object",
         "properties": {
           "path": {
             "type": "string",
             "maxLength": 256
+          },
+          "restart_native": {
+            "type": "boolean",
+            "default": false
           }
         },
         "required": [

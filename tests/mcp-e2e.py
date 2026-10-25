@@ -18,9 +18,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--runtime-zip', type=Path)
 parser.add_argument('--mode', choices=['browser', 'native'], default='browser')
 parser.add_argument('--native-cli', type=Path)
+parser.add_argument('--intentional-native-restart', action='store_true')
 parser.add_argument('--chromium')
 parser.add_argument('--output', type=Path, default=ROOT/'evidence/mcp')
 args = parser.parse_args()
+if args.intentional_native_restart and args.mode != 'native':
+    parser.error('--intentional-native-restart is native-only')
 args.output.mkdir(parents=True, exist_ok=True)
 report = {'checks': [], 'mode': args.mode, 'transport': 'genuine MCP stdio', 'core_version': __import__('dcc_mcp_core').__version__}
 
@@ -95,6 +98,14 @@ async def main():
                 await call('reopen_project',{'path':saved['path']})
                 reopened=await call('inspect_sequence',{'sequence':sequence})
                 check(reopened['name']==retimed['name'] and reopened['durationFrames']==retimed['durationFrames'],'native reopen preserves edit and timing')
+                if args.intentional_native_restart:
+                    restarted=await call('reopen_project',{'path':saved['path'],'restart_native':True})
+                    transition=restarted['intentional_restart']
+                    report['intentional_native_restart']=transition
+                    check(transition['completed'] and transition['old_child_exited'] and transition['generation']==2 and transition['runtime_identity_unchanged'],'owned native child exits before explicit same-save restart',transition)
+                    fresh=await call('inspect_sequence',{'sequence':sequence})
+                    persistent=('id','settings','duration','durationFrames','video','audio','markers')
+                    check({key:fresh[key] for key in persistent}=={key:reopened[key] for key in persistent},'fresh owned native child retains same saved sequence and media timing')
                 for fmt,filename in [('h264','export.mp4'),('wav','export.wav')]:
                     job=await call('export_media',{'name':'mcp-'+fmt,'sequence':sequence,'format':fmt})
                     deadline=time.monotonic()+120

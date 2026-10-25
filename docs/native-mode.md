@@ -38,6 +38,43 @@ Runtime and private process identity are checked, project identity/revision is c
 
 Native file reads bind the opened descriptor to the inspected regular file and recheck the session directory before and after reading. Observed file replacement or size/timestamp changes reject the read before artifact publication; directory replacement permanently revokes the session. These checks do not provide an OS sandbox or a transaction against a hostile concurrent writer.
 
+### Explicit owned-child restart
+
+On the reviewed 0.12.0 runtime, call `filmcraft_reopen_project` with the existing
+owned save handle and `restart_native: true` to intentionally replace the healthy
+native child. Omitting the parameter, or passing false, retains the existing
+same-process reopen behavior. Browser mode rejects the parameter and retains its
+separate document/session contract. The 18-operation catalog is unchanged.
+
+Before closing anything, the adapter verifies the original child and configured
+workspace/session directory identities, a clean current project, a recorded save,
+the exact save and every imported media hash, and terminal state for every owned
+export. Missing terminal evidence is unknown, not success. A dirty project or
+active export is refused without launching a replacement. The adapter then ends
+only its retained Process object and proves exit, rechecks the files/directory,
+and starts one child with a fresh private configuration directory inside the
+same workspace. Stable executable identity/hash and the initialized name,
+version and MCP protocol must match the original child before opening the save.
+Readback must identify that clean saved path. Unknown transport, startup, file or
+publication state permanently revokes the session; there is no retry/recovery.
+Primary errors and independent cleanup failures remain in the original receipt.
+
+The logical session, imported files, saved handles, export files and immutable
+artifacts remain owned. Finished old-child jobs retain terminal receipts. Job
+integers are opaque adapter handles: after a restart, aliases prevent a reused
+native job ID from cancelling an old/new job by mistake. Old-child cancellation
+is rejected; old successful export bytes remain readable. Existing file, import,
+export and artifact budgets are not reset. At most eight intentional restarts
+are allowed per logical session. This is not a portable bundle, another adapter
+process, an arbitrary filesystem opener or lost-process authority recovery.
+
+`inspect.capabilities` reports `intentional_restart`, `native_child_generation`
+and its finite limit, while `restart_recovery` remains false. A successful explicit
+reopen returns an `intentional_restart` receipt with confirmed old-child exit,
+generation and matching runtime identity. Source/fixture tests do not qualify
+native behavior. The opt-in Linux CI retains the pinned 0.12.0 CLI and original
+same-work video/audio oracles, now rerun after the explicit fresh-child reopen.
+
 Imports are limited to 16 MiB each and 64 MiB total. There are at most 128 reserved file slots and 32 export jobs per session, with only one active export. Before dispatch, native export is limited to 60 seconds, 1800 frames, 4096-pixel dimensions and 500 million total pixel-frames; audio is mono/stereo at at most 48 kHz. H.264 uses fixed 1000 kbps CBR and software encoding. Admission reserves 32 MiB against 128 MiB of existing owned files. Captured artifacts are limited to 32 MiB each and 128 MiB total; chunks to 256 KiB. Existing files cannot be overwritten. Only owned successful terminal exports can be read; only owned jobs can be cancelled. Export files may exceed the readback limit on disk; this is not a disk quota or an OS sandbox. Use a dedicated operator-controlled workspace and trusted media/runtime.
 
 Typed disconnect returns BUSY while any owned export is active; cancel or poll until terminal, then disconnect. A successful disconnect leaves the native process/document and files present. Immutable artifacts remain readable. Ending stdio closes the owned process, preserving saved files but ending unsaved in-memory edits. Retrieve artifact bytes and save needed work first.

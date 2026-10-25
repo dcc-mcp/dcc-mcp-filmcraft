@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import copy
 import hashlib
 import json
 import os
@@ -14,7 +15,7 @@ from pathlib import Path
 from jsonschema import Draft202012Validator, ValidationError
 
 from .browser import BrowserError
-from .catalog import TOOLS
+from .catalog import TOOLS, tools_for_mode
 
 MAX_MEDIA = 16 * 1024 * 1024
 MAX_ARTIFACT = 32 * 1024 * 1024
@@ -23,6 +24,7 @@ MAX_RPC = 4 * 1024 * 1024
 MAX_EXPORT_SECONDS = 60
 MAX_EXPORT_FRAMES = 1800
 MAX_EXPORT_PIXEL_FRAMES = 500_000_000
+MAX_INTENTIONAL_RESTARTS = 8
 NATIVE_VERSION = "0.12.0"
 NATIVE_VERSIONS = frozenset({"0.7.2", NATIVE_VERSION})
 NATIVE_LINUX_CLI_SHA256 = "05982fe44214f6174ffb54166d100e2362cf90811f2480235f3ecbaa0a3a75c2"
@@ -62,6 +64,15 @@ class NativeSession:
         self._stderr_task = None
         self._stderr = bytearray()
         self._directory_identity = None
+        self._workspace_identity = None
+        self._runtime_identity = None
+        self._runtime_fingerprint = None
+        self._generation = 1
+        self._job_aliases = {}
+        self._job_native = {}
+        self._archived_jobs = {}
+        self._next_job_alias = 1
+        self._cleanup_errors = []
         self._rpc_id = 0
         self._commands = set()
         self._project = None
@@ -74,6 +85,9 @@ class NativeSession:
         self._artifact_total = 0
         self._media_total = 0
         self._validators = {t["operation"]: Draft202012Validator(t["input_schema"]) for t in TOOLS}
+        self._validators.update(
+            {t["operation"]: Draft202012Validator(t["input_schema"]) for t in tools_for_mode(self.mode)}
+        )
         self.capabilities = {
             "mode": self.mode,
             "gui": False,
@@ -81,6 +95,9 @@ class NativeSession:
             "supported_operations": [t["operation"] for t in TOOLS if t["operation"] != "capture_view"],
             "unsupported_operations": ["capture_view"],
             "restart_recovery": False,
+            "intentional_restart": True,
+            "intentional_restart_limit": MAX_INTENTIONAL_RESTARTS,
+            "native_child_generation": self._generation,
             "arbitrary_commands": False,
         }
 
@@ -92,10 +109,55 @@ class NativeSession:
             self.revoked = True
             raise NativeError("RUNTIME", "configured FilmCraft CLI executable is missing")
         self.workspace.mkdir(parents=True, exist_ok=True)
+        self._workspace_identity = self._identity(self.workspace.lstat())
         self.session_dir.mkdir(mode=0o700)
         self._directory_identity = self._identity(self.session_dir.lstat())
         home = self.session_dir / "home"
         home.mkdir(mode=0o700)
+        try:
+            self._runtime_fingerprint = self._fingerprint_executable()
+            await self._launch_owned_child()
+            return self
+        except BaseException:
+            try:
+                await self.close()
+            except BaseException as cleanup:
+                self._cleanup_errors.append(f"startup cleanup: {type(cleanup).__name__}: {cleanup}")
+            raise
+
+    def _fingerprint_executable(self):
+        """Bind an intentional restart to the unchanged trusted executable bytes."""
+        descriptor = os.open(self.executable, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
+        with os.fdopen(descriptor, "rb") as source:
+            before = os.fstat(source.fileno())
+            if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= 128 * 1024 * 1024:
+                raise NativeError("RUNTIME", "native executable is not a bounded regular file")
+            digest = hashlib.sha256()
+            count = 0
+            while chunk := source.read(1024 * 1024):
+                count += len(chunk)
+                if count > 128 * 1024 * 1024:
+                    raise NativeError("RUNTIME", "native executable grew while being verified")
+                digest.update(chunk)
+            after = os.fstat(source.fileno())
+
+            def identity(value):
+                return value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns
+
+            if identity(before) != identity(after) or identity(after) != identity(self.executable.lstat()):
+                raise NativeError("RUNTIME", "native executable changed while being verified")
+            return identity(after), digest.hexdigest()
+
+    async def _launch_owned_child(self, expected_identity=None):
+        """Start only our explicitly owned child, using the existing private directory."""
+        self._guard_directory()
+        home = self.session_dir / ("home" if self._generation == 1 else f"home-restart-{self._generation}")
+        if self._generation > 1:
+            home.mkdir(mode=0o700)
+        if not stat.S_ISDIR(home.lstat().st_mode):
+            raise NativeError("SESSION", "native configuration directory must be an owned directory")
+        if self._fingerprint_executable() != self._runtime_fingerprint:
+            raise NativeError("RUNTIME", "native executable changed before child startup")
         env = {k: v for k, v in os.environ.items() if k in {"PATH", "SYSTEMROOT", "WINDIR", "LANG", "LC_ALL"}}
         env.update(
             HOME=str(home),
@@ -108,21 +170,22 @@ class NativeSession:
             RAYON_NUM_THREADS="2",
             TOKIO_WORKER_THREADS="2",
         )
+        self._process = await asyncio.create_subprocess_exec(
+            str(self.executable),
+            "mcp",
+            "--data-dir",
+            str(home / "data"),
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=str(self.session_dir),
+            env=env,
+            limit=MAX_RPC,
+        )
+        self._original_process = self._process
+        self._rpc_id, self._commands = 0, set()
+        self._stderr_task = asyncio.create_task(self._drain_stderr(self._original_process))
         try:
-            self._process = await asyncio.create_subprocess_exec(
-                str(self.executable),
-                "mcp",
-                "--data-dir",
-                str(home / "data"),
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=str(self.session_dir),
-                env=env,
-                limit=MAX_RPC,
-            )
-            self._original_process = self._process
-            self._stderr_task = asyncio.create_task(self._drain_stderr())
             initialized = await asyncio.wait_for(
                 self._rpc(
                     "initialize",
@@ -135,6 +198,11 @@ class NativeSession:
                 timeout=20,
             )
             info = self._validate_initialization(initialized)
+            identity = (info["name"], info["version"], initialized["protocolVersion"])
+            if expected_identity is not None and identity != expected_identity:
+                raise NativeError("RUNTIME", "restarted native runtime identity differs from the original child")
+            if self._fingerprint_executable() != self._runtime_fingerprint:
+                raise NativeError("RUNTIME", "native executable changed during startup")
             self._process.stdin.write(b'{"jsonrpc":"2.0","method":"notifications/initialized"}\n')
             await self._process.stdin.drain()
             catalog = await asyncio.wait_for(self._tool("command_list", {}), timeout=20)
@@ -143,11 +211,13 @@ class NativeSession:
             self._commands = {row.get("id") for row in catalog if isinstance(row, dict)}
             self._project = _key(await asyncio.wait_for(self._command("project.inspect"), timeout=20))
             self.capabilities["runtime_version"] = info["version"]
+            self.capabilities["intentional_restart"] = info["version"] == NATIVE_VERSION
             self.capabilities["mcp_protocol"] = initialized["protocolVersion"]
             self.capabilities["engine_command_count"] = len(self._commands)
-            return self
+            self._runtime_identity = identity
+            self.capabilities["native_child_generation"] = self._generation
         except BaseException:
-            await self.close()
+            self.revoked = True
             raise
 
     @staticmethod
@@ -181,9 +251,9 @@ class NativeSession:
     def _identity(st):
         return (st.st_dev, st.st_ino)
 
-    async def _drain_stderr(self):
+    async def _drain_stderr(self, process):
         while True:
-            chunk = await self._original_process.stderr.read(8192)
+            chunk = await process.stderr.read(8192)
             if not chunk:
                 return
             self._stderr.extend(chunk)
@@ -191,13 +261,130 @@ class NativeSession:
 
     def _guard_directory(self):
         try:
+            workspace = self.workspace.lstat()
             current = self.session_dir.lstat()
         except OSError as exc:
             self.revoked = True
             raise NativeError("SESSION", "owned native directory is unavailable") from exc
-        if not stat.S_ISDIR(current.st_mode) or self._identity(current) != self._directory_identity:
+        if (
+            not stat.S_ISDIR(workspace.st_mode)
+            or self._identity(workspace) != self._workspace_identity
+            or not stat.S_ISDIR(current.st_mode)
+            or self._identity(current) != self._directory_identity
+        ):
             self.revoked = True
             raise NativeError("SESSION", "owned native directory identity changed")
+
+    def _native_job_id(self, alias):
+        generation, native = self._job_native.get(alias, (1, alias))
+        return native if generation == self._generation else None
+
+    def _job_alias(self, native):
+        if type(native) is not int or not 1 <= native <= 9007199254740991:
+            self.revoked = True
+            raise NativeError("INDETERMINATE", "native job has no bounded identity")
+        key = (self._generation, native)
+        if key not in self._job_aliases:
+            alias = native if self._generation == 1 else self._next_job_alias
+            if alias > 9007199254740991:
+                self.revoked = True
+                raise NativeError("INDETERMINATE", "native job identity capacity exhausted")
+            self._job_aliases[key] = alias
+            self._job_native[alias] = key
+            self._next_job_alias = max(self._next_job_alias, alias + 1)
+        return self._job_aliases[key]
+
+    def _map_jobs(self, jobs):
+        if not isinstance(jobs, list) or any(not isinstance(row, dict) for row in jobs):
+            self.revoked = True
+            raise NativeError("INDETERMINATE", "native jobs response has an invalid shape")
+        result, seen = [], set()
+        for row in jobs:
+            alias = self._job_alias(row.get("id"))
+            if alias in seen:
+                self.revoked = True
+                raise NativeError("INDETERMINATE", "native jobs response repeats an identity")
+            seen.add(alias)
+            value = copy.deepcopy(row)
+            value["id"] = alias
+            result.append(value)
+        return result
+
+    def _verify_saved_media(self, saved):
+        name, digest = saved
+        if hashlib.sha256(self._read_owned(name, MAX_MEDIA)).hexdigest() != digest:
+            raise NativeError("DOCUMENT", "saved project changed outside this client")
+        for media, expected in self._media.items():
+            if hashlib.sha256(self._read_owned(media, MAX_MEDIA)).hexdigest() != expected:
+                raise NativeError("DOCUMENT", "imported media changed outside this client")
+
+    async def _restart_and_reopen(self, saved):
+        """Intentional transition from a healthy child, never lost-process recovery."""
+        if self._generation > MAX_INTENTIONAL_RESTARTS:
+            raise NativeError("LIMIT", "intentional native restart budget exhausted")
+        if self._runtime_identity is None or self._runtime_fingerprint is None:
+            self.revoked = True
+            raise NativeError("SESSION", "original native runtime identity was not established")
+        if self._runtime_identity[1] != NATIVE_VERSION:
+            raise NativeError("UNSUPPORTED", "intentional native restart is reviewed only for FilmCraft 0.12.0")
+        jobs = self._map_jobs(await self._command("jobs.list"))
+        by_id = {row["id"]: row for row in jobs}
+        for _, alias in self._exports.values():
+            if self._native_job_id(alias) is None:
+                continue
+            row = by_id.get(alias)
+            if row is None:
+                self.revoked = True
+                raise NativeError("INDETERMINATE", "owned export terminal state cannot be established")
+            if row.get("finished") is not True:
+                raise NativeError("BUSY", "intentional restart requires every owned export to be terminal")
+        try:
+            self._verify_saved_media(saved)
+            if self._fingerprint_executable() != self._runtime_fingerprint:
+                raise NativeError("RUNTIME", "native executable differs from the original child")
+            self._guard()
+            identity = self._runtime_identity
+            self._archived_jobs.update(
+                {
+                    alias: copy.deepcopy(by_id[alias])
+                    for _, alias in self._exports.values()
+                    if self._native_job_id(alias) is not None
+                }
+            )
+            stopped = await self._stop_owned_child()
+            if not stopped["closed"] or stopped["cleanup_errors"]:
+                raise NativeError("INDETERMINATE", "old owned native child did not close cleanly")
+            old_exit = self._original_process.returncode
+            self._guard_directory()
+            self._verify_saved_media(saved)
+            self._generation += 1
+            await self._launch_owned_child(expected_identity=identity)
+            current = await self._check_project()
+            if current.get("dirty") is not False or current.get("root", {}).get("children") != []:
+                raise NativeError("DOCUMENT", "new owned child must start with an empty clean project")
+            self._verify_saved_media(saved)
+            await self._mutate("file.open", {"path": str(self.session_dir / saved[0])})
+            project = await self._command("project.inspect")
+            if project.get("path") != str(self.session_dir / saved[0]) or project.get("dirty") is not False:
+                raise NativeError("DOCUMENT", "new owned child did not reopen the verified clean save")
+            self._verify_saved_media(saved)
+            return {
+                **project,
+                "intentional_restart": {
+                    "completed": True,
+                    "old_child_exited": True,
+                    "old_child_exit_code": old_exit,
+                    "generation": self._generation,
+                    "runtime_identity_unchanged": True,
+                },
+            }
+        except BaseException:
+            self.revoked = True
+            try:
+                await self._stop_owned_child()
+            except BaseException as cleanup:
+                self._cleanup_errors.append(f"restart cleanup: {type(cleanup).__name__}: {cleanup}")
+            raise
 
     def _guard(self):
         if self.revoked:
@@ -279,13 +466,27 @@ class NativeSession:
 
     async def _mutate(self, command, params=None, sequence=None):
         await self._check_project(sequence)
+        primary = None
         try:
             return await self._command(command, params)
+        except BaseException as exc:
+            primary = exc
+            raise
         finally:
             # A host error may still follow a partial edit. Record actual state;
             # no retry, synthetic rollback or guessed revision is used.
             if not self.revoked:
-                self._project = _key(await self._command("project.inspect"))
+                try:
+                    self._project = _key(await self._command("project.inspect"))
+                except BaseException as state_error:
+                    self.revoked = True
+                    self._cleanup_errors.append(f"native state readback: {type(state_error).__name__}: {state_error}")
+                    if primary is None:
+                        if isinstance(state_error, asyncio.CancelledError):
+                            raise
+                        raise NativeError(
+                            "INDETERMINATE", "native mutation state readback failed; never replay"
+                        ) from state_error
 
     def _virtual(self, name):
         return f"{self._virtual_root}/{name}"
@@ -353,7 +554,7 @@ class NativeSession:
     async def _export_budget(self, sequence):
         """Bound native work before creating another streaming export job."""
         jobs = await self._command("jobs.list")
-        owned = {job for _, job in self._exports.values()}
+        owned = {self._native_job_id(job) for _, job in self._exports.values()}
         if any(row.get("id") in owned and not row.get("finished") for row in jobs):
             raise NativeError("BUSY", "only one native export may run at a time")
         info = await self._command("sequence.inspect", {"item": sequence})
@@ -398,7 +599,9 @@ class NativeSession:
 
     def _public(self, value):
         if isinstance(value, str):
-            return value.replace(str(self.session_dir), self._virtual_root)
+            return value.replace(str(self.session_dir) + os.sep, self._virtual_root + "/").replace(
+                str(self.session_dir), self._virtual_root
+            )
         if isinstance(value, dict):
             return {k: self._public(v) for k, v in value.items()}
         if isinstance(value, list):
@@ -465,6 +668,7 @@ class NativeSession:
                 error=str(exc),
                 code=getattr(exc, "code", "HOST"),
                 uncertain=self.revoked or isinstance(exc, asyncio.CancelledError),
+                cleanup_errors=list(self._cleanup_errors),
             )
             if isinstance(exc, asyncio.CancelledError):
                 self.revoked = True
@@ -541,15 +745,21 @@ class NativeSession:
             saved = self._saved.get(p["path"])
             if not saved:
                 raise NativeError("DOCUMENT", "only this session's unchanged native save may reopen")
-            if (await self._check_project()).get("dirty"):
+            try:
+                current = await self._check_project()
+            except BaseException:
+                if p.get("restart_native", False):
+                    self.revoked = True
+                raise
+            if p.get("restart_native", False) and type(current.get("dirty")) is not bool:
+                self.revoked = True
+                raise NativeError("INDETERMINATE", "current native project cleanliness cannot be established")
+            if current.get("dirty"):
                 raise NativeError("DOCUMENT", "save the current project before reopening")
-            name, digest = saved
-            if hashlib.sha256(self._read_owned(name, MAX_MEDIA)).hexdigest() != digest:
-                raise NativeError("DOCUMENT", "saved project changed outside this client")
-            for media, expected in self._media.items():
-                if hashlib.sha256(self._read_owned(media, MAX_MEDIA)).hexdigest() != expected:
-                    raise NativeError("DOCUMENT", "imported media changed outside this client")
-            await self._mutate("file.open", {"path": str(self.session_dir / name)})
+            if p.get("restart_native", False):
+                return await self._restart_and_reopen(saved)
+            self._verify_saved_media(saved)
+            await self._mutate("file.open", {"path": str(self.session_dir / saved[0])})
             return await self._command("project.inspect")
         if operation == "export_media":
             if len(self._exports) >= 32:
@@ -576,28 +786,39 @@ class NativeSession:
                 self.revoked = True
                 raise NativeError("INDETERMINATE", "native export returned no identifiable job")
             handle = self._virtual(name)
-            self._exports[handle] = (name, job)
-            return {"path": handle, "job": job}
+            alias = self._job_alias(job)
+            self._exports[handle] = (name, alias)
+            return {"path": handle, "job": alias}
         if operation == "list_jobs":
-            return await self._command("jobs.list")
+            return [
+                *copy.deepcopy(list(self._archived_jobs.values())),
+                *self._map_jobs(await self._command("jobs.list")),
+            ]
         if operation == "cancel_export":
             if p["job"] not in {job for _, job in self._exports.values()}:
                 raise NativeError("SESSION", "export job is not owned by this session")
-            return await self._command("jobs.cancel", {"job": p["job"]})
+            native = self._native_job_id(p["job"])
+            if native is None:
+                raise NativeError("SESSION", "export belongs to an ended native child and is already terminal")
+            return await self._command("jobs.cancel", {"job": native})
         if operation == "read_export":
             owned = self._exports.get(p["path"])
             if not owned:
                 raise NativeError("SESSION", "export path is not owned by this session")
             name, job = owned
-            jobs = await self._command("jobs.list")
-            record = next((row for row in jobs if row.get("id") == job), None)
+            native = self._native_job_id(job)
+            if native is None:
+                record = self._archived_jobs.get(job)
+            else:
+                jobs = await self._command("jobs.list")
+                record = next((row for row in jobs if row.get("id") == native), None)
             if not record or not record.get("finished"):
                 raise NativeError("BUSY", "export has not reached terminal state")
             if record.get("error") or (record.get("result") or {}).get("error") or record.get("offlineMedia"):
                 raise NativeError("EXPORT", "native export did not succeed")
             return self._store(self._read_owned(name, MAX_ARTIFACT), Path(name).suffix[1:])
         if operation == "disconnect":
-            owned_jobs = {job for _, job in self._exports.values()}
+            owned_jobs = {self._native_job_id(job) for _, job in self._exports.values()}
             jobs = await self._command("jobs.list")
             if any(row.get("id") in owned_jobs and not row.get("finished") for row in jobs):
                 raise NativeError("BUSY", "cancel and await active exports before disconnecting")
@@ -614,6 +835,18 @@ class NativeSession:
     async def close(self):
         """End the owned process; never remove imported media, saves or exports."""
         self.revoked = True
+        result = await self._stop_owned_child()
+        if self.evidence_dir:
+            try:
+                self.evidence_dir.mkdir(parents=True, exist_ok=True)
+                (self.evidence_dir / f"native-{self.session_id}.stderr.log").write_bytes(self._stderr)
+            except OSError as exc:
+                result["cleanup_errors"].append(str(exc))
+                self._cleanup_errors.append(str(exc))
+        return result
+
+    async def _stop_owned_child(self):
+        """Close only our retained Process object and prove its exit before replacement."""
         errors = []
         process = self._original_process
         if process:
@@ -629,14 +862,21 @@ class NativeSession:
                     except asyncio.TimeoutError:
                         process.kill()
                         await asyncio.wait_for(process.wait(), timeout=3)
-            except (OSError, ProcessLookupError, asyncio.TimeoutError) as exc:
+            except (OSError, ProcessLookupError, asyncio.TimeoutError, RuntimeError) as exc:
                 errors.append(str(exc))
         if self._stderr_task:
             try:
                 await asyncio.wait_for(self._stderr_task, timeout=2)
             except (asyncio.TimeoutError, asyncio.CancelledError):
                 self._stderr_task.cancel()
-        if self.evidence_dir:
-            self.evidence_dir.mkdir(parents=True, exist_ok=True)
-            (self.evidence_dir / f"native-{self.session_id}.stderr.log").write_bytes(self._stderr)
-        return {"closed": True, "filesPreserved": True, "cleanup_errors": errors}
+                try:
+                    await self._stderr_task
+                except asyncio.CancelledError:
+                    pass
+            except (OSError, RuntimeError) as exc:
+                errors.append(str(exc))
+        closed = process is None or process.returncode is not None
+        if not closed:
+            errors.append("owned native child exit is not confirmed")
+        self._cleanup_errors.extend(errors)
+        return {"closed": closed, "filesPreserved": True, "cleanup_errors": errors}
