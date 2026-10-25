@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "runtime": "FilmCraft 0.12.0",
+  "source_adapter_head": "f1e8e0103a7326ed684e47d950432309e9190e6c",
+  "source_project_sha256": "0cd77b0e9221f3834f7279b4aa175a22edd6ac1ca3ea1c92e128c947a800c09f",
+  "transformation": {
+    "only_json_pointer": "/project/items/1/kind/Media/media/File/path",
+    "replacement": "media/source.mp4",
+    "all_other_json_fields_equal_to_original": true,
+    "native_validation": "not implied by the offline template; requires A/save and relocated B/open/export acceptance"
+  },
+  "template": {
+    "file": "project.fcproj",
+    "bytes": 5620,
+    "sha256": "2e583bcde1d91efe40edf43e730503155e8571e76bb9b362742f43ea498485b3"
+  },
+  "media": {
+    "file": "media/source.mp4",
+    "fixture_file": "source.mp4",
+    "bytes": 21911,
+    "sha256": "00ea011f98e63f9ecd325da87c4ad8de567bbd58539db0924edcef6b4129f5a5"
+  },
+  "semantic_project_sha256": "8a6bf446e49a8aa1d7069af18a634898300cf42427ca96f5a5f5ed427cec98a1",
+  "original_media_recipe": [
+    "ffmpeg",
+    "-f",
+    "lavfi",
+    "-i",
+    "testsrc2=size=160x90:rate=12",
+    "-f",
+    "lavfi",
+    "-i",
+    "sine=frequency=440:sample_rate=48000",
+    "-t",
+    "1",
+    "-c:v",
+    "libx264",
+    "-threads",
+    "1",
+    "-pix_fmt",
+    "yuv420p",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "64k",
+    "-movflags",
+    "+faststart"
+  ],
+  "scope": "Original procedural qualification media, not vendor binary, Adobe content or a promotional film."
+}

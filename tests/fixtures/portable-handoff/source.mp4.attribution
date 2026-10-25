@@ -1,0 +1,8 @@
+asset: source.mp4
+title: FilmCraft portable-handoff calibration fixture
+author: DCC-MCP contributors
+source: original procedural acceptance work, exact f1e8e010 bytes; manifest records provenance
+license: MIT
+license-file: ../../../LICENSE
+added: 2026-10-26
+notes: No vendor binary/font/artwork. Project changes only one media reference; not qualified portable until A/B native case succeeds.

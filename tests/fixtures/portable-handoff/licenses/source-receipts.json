@@ -1,0 +1,33 @@
+[
+  {
+    "path": "licenses/LICENSE-MIT",
+    "source_url": "https://github.com/storytold/filmcraft/blob/274c4cf85ba638d4b6f867d97ca3f6478a993c8d/LICENSE-MIT",
+    "source_commit": "274c4cf85ba638d4b6f867d97ca3f6478a993c8d",
+    "git_blob_sha": "458ff62022ecffd3e32cf31895c96bd79e89875f",
+    "bytes": 1101,
+    "sha256": "d2d8416f0883694c23b473e26372506e9e11f5f41b55a92b7388dab921d9a207"
+  },
+  {
+    "path": "licenses/LICENSE-APACHE",
+    "source_url": "https://github.com/storytold/filmcraft/blob/274c4cf85ba638d4b6f867d97ca3f6478a993c8d/LICENSE-APACHE",
+    "source_commit": "274c4cf85ba638d4b6f867d97ca3f6478a993c8d",
+    "git_blob_sha": "f433b1a53f5b830a205fd2df78e2b34974656c7b",
+    "bytes": 10174,
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+  },
+  {
+    "path": "licenses/NOTICE",
+    "source_url": "https://github.com/storytold/filmcraft/blob/274c4cf85ba638d4b6f867d97ca3f6478a993c8d/NOTICE",
+    "source_commit": "274c4cf85ba638d4b6f867d97ca3f6478a993c8d",
+    "git_blob_sha": "221a0acc65d14c9546909909ce6fd736b9890695",
+    "bytes": 1296,
+    "sha256": "5761787313b9d6c13dd5f03da2e04209ad7bd08eff8920edfd184141d791195c"
+  },
+  {
+    "path": "licenses/adapter-LICENSE-MIT",
+    "source_url": "https://github.com/dcc-mcp/dcc-mcp-filmcraft/blob/f1e8e0103a7326ed684e47d950432309e9190e6c/LICENSE",
+    "source_commit": "f1e8e0103a7326ed684e47d950432309e9190e6c",
+    "bytes": 1098,
+    "sha256": "4e151a6ceda527fe8c9bb1ccc56ed41d69f7621aba01d5f073d0aa1519ddc8a1"
+  }
+]

@@ -1,0 +1,74 @@
+name: Portable file handoff
+on:
+  pull_request:
+    branches: [feat/native-owned-restart]
+    paths:
+      - .github/workflows/portable-handoff.yml
+      - tests/native_portability.py
+      - tests/portable_runtime.py
+      - tests/python/test_native_portability.py
+      - tests/python/test_portable_runtime.py
+      - tests/python/fixtures/portable_peer.py
+      - tests/fixtures/portable-handoff/**
+      - docs/portable-handoff.md
+      - docs/source-guided-plan-amendment.md
+      - docs/issues/media-status-relative-path.md
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  portable:
+    name: Official 0.12 file portability / Linux x86_64
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      DCC_MCP_DISABLE_DEFAULT_SKILL_PATHS: '1'
+      FILMCRAFT_NATIVE_CLI: ''
+      QUALIFICATION_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e ".[dev]"
+      - name: Offline admission and owned-transport regression
+        run: |
+          python -m ruff check tests/native_portability.py tests/portable_runtime.py tests/python/test_native_portability.py tests/python/test_portable_runtime.py tests/python/fixtures/portable_peer.py
+          python -m ruff format --check tests/native_portability.py tests/portable_runtime.py tests/python/test_native_portability.py tests/python/test_portable_runtime.py tests/python/fixtures/portable_peer.py
+          python -m pytest tests/python/test_native_portability.py tests/python/test_portable_runtime.py
+      - name: Install bounded media-oracle tools
+        run: |
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 update
+            sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 install -y --no-install-recommends ffmpeg
+          fi
+      - name: Fetch the existing qualified 0.12 release only through gh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download v0.12.0 --repo storytold/filmcraft --pattern filmcraft-0.12.0-linux-x86_64.tar.gz --output runtime-archive.tar.gz
+      - name: Offline archive and exact CLI member verification
+        run: python tests/portable_runtime.py --archive runtime-archive.tar.gz --output runtime/filmcraft-cli
+      - name: A official save, isolation, fresh B document-relative open and original decoded oracles
+        run: python tests/native_portability.py --native-cli runtime/filmcraft-cli --output evidence/portable-handoff --adapter-source-commit "$QUALIFICATION_HEAD"
+      - name: User-facing relative project, media and validation
+        uses: actions/upload-artifact@v4
+        with:
+          name: filmcraft-portable-user-files
+          path: |
+            evidence/portable-handoff/user-facing/
+            evidence/portable-handoff/filmcraft-portable-handoff.zip
+          if-no-files-found: error
+          retention-days: 14
+      - name: Internal raw qualification diagnostics, never a public showcase bundle
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: filmcraft-portable-internal-diagnostics
+          path: evidence/portable-handoff/internal/
+          retention-days: 14
