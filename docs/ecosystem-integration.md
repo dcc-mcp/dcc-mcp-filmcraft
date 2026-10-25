@@ -40,8 +40,11 @@ Other CAD/DCC/Nuke consumers require their own native import and color evidence.
 The existing Python candidate is `dcc-mcp-filmcraft==0.1.0`, still unreleased.
 Build a wheel and sdist from one reviewed commit and smoke-test the wheel in an
 isolated interpreter before a release. A locally built wheel is not a PyPI
-publication. This repository currently has no publishing workflow or configured
-publisher evidence; do not infer ownership from a public project lookup.
+publication. A manual-only `release.yml` is now prepared in this draft; it is
+not enabled on the default branch and no publisher or GitHub environment was
+created. Its default produces artifacts without publishing. See the exact
+future identity and gates in [publishing preparation](publishing.md). Do not
+infer project ownership from a public lookup.
 
 PhotoCraft and PdfCraft already have separate package repositories and release
 workflows. Reuse them. Do not create empty sibling packages to reserve names.
