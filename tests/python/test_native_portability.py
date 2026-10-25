@@ -225,7 +225,7 @@ def test_raw_status_disagreement_is_preserved_without_claiming_online(tmp_path):
 
         async def command_call(self, name, params=None):
             return {
-                "file.open": {"missingMedia": []},
+                "file.open": {"missingMedia": 0},
                 "media.findMissing": {"missing": []},
                 "media.status": [{"item": 1, "path": case.MEDIA, "status": "missing"}],
                 "project.inspect": {"dirty": False, "path": str(tmp_path / "project.fcproj")},
@@ -245,7 +245,7 @@ def test_open_readback_requires_actual_clean_boolean(tmp_path, dirty):
 
         async def command_call(self, name, params=None):
             return {
-                "file.open": {"missingMedia": []},
+                "file.open": {"missingMedia": 0},
                 "media.findMissing": {"missing": []},
                 "media.status": [{"item": 1, "path": case.MEDIA, "status": "missing"}],
                 "project.inspect": {"dirty": dirty, "path": str(tmp_path / "project.fcproj")},
@@ -253,3 +253,46 @@ def test_open_readback_requires_actual_clean_boolean(tmp_path, dirty):
 
     with pytest.raises(AssertionError, match="exact clean opened project"):
         asyncio.run(case.inspect_online(Fixture(), tmp_path / "project.fcproj", [], {}))
+
+
+@pytest.mark.parametrize("missing", [False, True, 0.0, [], {}, None, 1, -1, "absent"])
+def test_open_missing_media_requires_strict_zero_integer(tmp_path, missing):
+    class Fixture:
+        label = "A"
+
+        async def command_call(self, name, params=None):
+            assert name == "file.open"
+            return {} if missing == "absent" else {"missingMedia": missing}
+
+    with pytest.raises(AssertionError, match="open has no missing media"):
+        asyncio.run(case.inspect_online(Fixture(), tmp_path / "project.fcproj", [], {}))
+
+
+def test_e399_completed_open_wire_value_is_zero_count_not_list():
+    response = case.types.CallToolResult.model_validate(
+        {
+            "content": [{"type": "text", "text": '{"migrated":false,"missingMedia":0,"schemaVersion":15}'}],
+            "isError": False,
+        }
+    )
+    result = case.tool_value(response)
+    assert type(result["missingMedia"]) is int and result["missingMedia"] == 0
+
+
+@pytest.mark.parametrize("offline", [[], [{"item": 1}], None, 0, False])
+def test_terminal_export_requires_explicit_empty_offline_list(tmp_path, offline):
+    output = tmp_path / "synthetic-export.txt"
+
+    class Fixture:
+        async def command_call(self, name, params=None):
+            if name == "file.exportMedia":
+                output.write_bytes(b"synthetic unit output; not encoded media or vendor content")
+                return {"job": 1}
+            assert name == "jobs.list"
+            return [{"id": 1, "finished": True, "result": {"frames": 24}, "offlineMedia": offline}]
+
+    if offline == []:
+        asyncio.run(case.terminal_export(Fixture(), 8, output, "h264", []))
+    else:
+        with pytest.raises(AssertionError, match="no offline media"):
+            asyncio.run(case.terminal_export(Fixture(), 8, output, "h264", []))

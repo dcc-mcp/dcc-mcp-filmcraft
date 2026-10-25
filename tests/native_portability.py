@@ -426,8 +426,12 @@ def require(checks, condition, name, detail=None):
 
 async def inspect_online(client, project_path, checks, report):
     opened = await client.command_call("file.open", {"path": str(project_path)})
+    missing_count = opened.get("missingMedia")
     require(
-        checks, opened.get("missingMedia") == [], client.label + " document-relative open has no missing media", opened
+        checks,
+        type(missing_count) is int and missing_count == 0,
+        client.label + " document-relative open has no missing media",
+        opened,
     )
     missing = await client.command_call("media.findMissing")
     require(checks, missing.get("missing") == [], client.label + " official findMissing resolves all media", missing)
@@ -491,6 +495,7 @@ async def terminal_export(client, sequence, path, fmt, checks):
         fmt + " export reaches successful terminal state",
         record,
     )
+    require(checks, record.get("offlineMedia") == [], fmt + " export has no offline media", record)
     read_regular(path, MAX_OUTPUT)
 
 

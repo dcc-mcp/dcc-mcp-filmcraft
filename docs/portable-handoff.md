@@ -19,7 +19,8 @@ After confirming A exited, the exact saved bytes and media are copied to B and
 the old A root is renamed to a direct owned isolation sibling. A new owned
 Process B runs with a third, empty cwd. It opens B using the absolute document
 path; neither A nor the process cwd can supply `media/source.mp4`. Official
-`file.open.missingMedia` and `media.findMissing.missing` must both be empty.
+`file.open.missingMedia` must be strict integer zero; `media.findMissing.missing`
+must be an empty array.
 B then officially saves a new file and exports H264/AAC and WAV. Every resource
 hash and the original independent 12-to-24-frame, MAE<18, 1.95–2.1-second,
 200–240 Hz and RMS>0.02 oracles must pass. No unknown operation is replayed.
@@ -59,3 +60,34 @@ python tests/native_portability.py --native-cli runtime/filmcraft-cli \
 不能称API全健康，也不能改cwd/创建别名绕过。逐资产哈希和无实际执行根路径扫描
 通过后，才生成新的user-facing副本；原f1证据/旧Library不改。GUI、完整安装、
 通用工程导入、未知结果恢复、其他运行时均未由此验证。
+
+## Executed harness schema correction (first e399 qualification)
+
+The first native run, commit `e3990ab41a19ad9472f8f06bf9ca3bd6f9125191`,
+completed official `file.open` successfully with `missingMedia: 0` and
+`isError: false`. The harness incorrectly expected an empty array and stopped
+before B. A's owned child PID 3442 exited with code 0 and no cleanup error. Its
+original failed check, full response and log are retained; no uncertain
+mutation is replayed.
+
+Exact 0.12 `relink.rs:740-752` defines `on_open -> usize` and returns `list.len()`;
+`commands.rs:4417-4418` serializes that count. The corrected gate is therefore
+strict integer zero, rejecting booleans, floats, arrays, nonzero and absent
+values. The earlier plan's `missingMedia == []` was a wire-shape error, not an
+acceptable alternative. `media.findMissing` still requires `{missing: []}`
+(`relink.rs:615-617`). This correction is explicitly after execution and does
+not rewrite the earlier pre-execution status-diagnostic amendment.
+
+The remaining wire shapes were checked against exact source: `media.status` is
+an array; `jobs.list` is an array, `Job::to_json.finished` means a result exists
+and successful results are objects (`engine/lib.rs:497-510`); export dispatch
+returns an integer job (`export_tools.rs:535-548`) and its terminal record has an
+`offlineMedia` array (`export_tools.rs:479-500,621-632`). Terminal export now
+also explicitly requires that array to be empty. All source/template/asset
+hashes, A isolation, B's unrelated cwd, status separation and original decoded
+video/audio thresholds remain unchanged.
+
+首轮执行后的窄修：官方 open 返回的是缺失数量 int0，原 harness 错按空数组判断。
+原失败证据及旧期望保留；仅改为严格整数0，findMissing仍要求空数组，并显式要求
+terminal export 的 offlineMedia=[]。这不是厂商权限/资源拒绝，也不是执行后删除
+画音检查。第二轮必须全新自有A→B，不重放已关闭的原进程操作。
