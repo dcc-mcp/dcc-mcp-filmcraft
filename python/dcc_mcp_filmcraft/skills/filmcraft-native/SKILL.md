@@ -9,6 +9,10 @@ The stdio launcher owns one persistent official `filmcraft-cli mcp` process.
 This is a native headless engine, not a desktop GUI window or a browser editor.
 The launcher requires an executable and a workspace; every session gets a fresh
 private subdirectory. No tool accepts OS paths, arbitrary commands, URLs or code.
+The operator can supply the CLI path or resolve it from FILMCRAFT_CLI, PATH and
+read-only official Craft Launcher hints. These hints do not verify binary trust.
+The native base package needs no Playwright/Chromium installation. Reuse the
+operator-selected DCC-MCP Runtime interpreter; do not install another runtime.
 
 1. Inspect the native session and its capabilities. Create only in an empty clean
    project, then import authorized base64 media bytes, at most 16 MiB per file.
@@ -23,6 +27,9 @@ private subdirectory. No tool accepts OS paths, arbitrary commands, URLs or code
    check error/result.error before reading its bytes. Never replay an export.
 5. Read artifacts in base64 chunks of at most 256 KiB and verify SHA-256. Check
    decoded frame count, picture content, audio and duration independently.
+   When importing a PhotoCraft PNG, record its hash, dimensions and color tags.
+   Untagged encoded sRGB intent is not an automatic color-management guarantee.
+   H.264 is opaque/lossy; do not claim alpha, OCIO or scene-linear preservation.
 6. TIMEOUT/CANCELLED/SESSION/INDETERMINATE does not mean rollback. Reconcile the
    original receipt. A lost process is never replaced to regain authority.
 7. Cancel only this session's exports and wait for terminal state; disconnect

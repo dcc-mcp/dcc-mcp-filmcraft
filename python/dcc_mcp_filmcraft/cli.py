@@ -7,6 +7,7 @@ from pathlib import Path
 
 from . import __version__
 from .browser import RUNTIME_SHA256, RUNTIME_URL
+from .launcher import NativeCliHint, discover_native_cli
 
 
 def main(argv=None):
@@ -17,7 +18,11 @@ def main(argv=None):
     serve = sub.add_parser("serve", help="Run genuine MCP stdio and one owned FilmCraft session")
     serve.add_argument("--mode", choices=["browser", "native"], default="browser")
     serve.add_argument("--runtime-zip", type=Path, help="Browser mode: official v0.7.2 ZIP, SHA-256 verified")
-    serve.add_argument("--native-cli", type=Path, help="Native mode: official FilmCraft CLI executable")
+    serve.add_argument(
+        "--native-cli",
+        type=Path,
+        help="Native mode: CLI path; otherwise FILMCRAFT_CLI, PATH, then Craft Launcher hints",
+    )
     serve.add_argument(
         "--workspace", type=Path, help="Native mode: persistent root for a new private session directory"
     )
@@ -30,6 +35,11 @@ def main(argv=None):
     serve.add_argument("--evidence-dir", type=Path, help="Explicit destination for browser recording")
     args = parser.parse_args(argv)
     if args.command == "status":
+        try:
+            native_discovery = discover_native_cli().status()
+        except ValueError:
+            native_discovery = NativeCliHint(None, "environment").status()
+            native_discovery["configuration_error"] = "configured CLI is not executable"
         print(
             json.dumps(
                 {
@@ -46,6 +56,7 @@ def main(argv=None):
                         "native": {"tools": 18, "visible_editor": False, "process": "owned persistent CLI MCP"},
                     },
                     "native_gui_adapter": False,
+                    "native_cli_discovery": native_discovery,
                 },
                 indent=2,
             )
@@ -55,13 +66,17 @@ def main(argv=None):
     from .server import run_stdio
 
     if args.mode == "native":
-        if not args.native_cli or not args.workspace:
-            parser.error("native mode requires --native-cli and --workspace")
+        if not args.workspace:
+            parser.error("native mode requires --workspace")
         if args.runtime_zip or args.headless or args.chromium:
             parser.error("browser runtime/headless/Chromium options cannot be used in native mode")
-        adapter = FilmCraftAdapter.launch_native(
-            args.native_cli, workspace=args.workspace, evidence_dir=args.evidence_dir
-        )
+        try:
+            native_cli = discover_native_cli(args.native_cli).path
+        except ValueError as exc:
+            parser.error(str(exc))
+        if native_cli is None:
+            parser.error("FilmCraft CLI not found; configure --native-cli or install an official native runtime")
+        adapter = FilmCraftAdapter.launch_native(native_cli, workspace=args.workspace, evidence_dir=args.evidence_dir)
     else:
         if not args.runtime_zip:
             parser.error("browser mode requires --runtime-zip")
