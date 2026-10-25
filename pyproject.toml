@@ -9,10 +9,16 @@ description = "Typed Core/MCP adapter for owned FilmCraft browser and native eng
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
-dependencies = ["dcc-mcp-core>=0.20.44,<0.21", "mcp>=1.30,<2", "playwright==1.55.0", "jsonschema>=4.18,<5"]
+dependencies = ["dcc-mcp-core>=0.20.44,<0.21", "mcp>=1.30,<2", "jsonschema>=4.18,<5"]
+
+[project.urls]
+Homepage = "https://github.com/dcc-mcp/dcc-mcp-filmcraft"
+Documentation = "https://github.com/dcc-mcp/dcc-mcp-filmcraft/blob/main/README.md"
+Issues = "https://github.com/dcc-mcp/dcc-mcp-filmcraft/issues"
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.8", "build>=1.2"]
+browser = ["playwright==1.55.0"]
+dev = ["pytest>=8", "ruff>=0.8", "build>=1.2", "playwright==1.55.0"]
 
 [project.scripts]
 dcc-mcp-filmcraft = "dcc_mcp_filmcraft.cli:main"
@@ -26,6 +32,9 @@ packages = ["python/dcc_mcp_filmcraft"]
 [tool.hatch.build.targets.wheel.force-include]
 "src/index.js" = "dcc_mcp_filmcraft/assets/index.js"
 "src/mcp-bridge.js" = "dcc_mcp_filmcraft/assets/mcp-bridge.js"
+
+[tool.hatch.build.targets.sdist]
+only-include = ["python", "src", "skills", "docs", "scripts", "tests", "LICENSE", "README.md", "README.zh-CN.md", "pyproject.toml", "package.json", "package-lock.json", "AGENTS.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests/python"]

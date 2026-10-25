@@ -31,7 +31,7 @@ footage. See [acceptance evidence](docs/acceptance.md) and
 ## Run the Core-backed MCP server
 
 ```sh
-python -m pip install .
+python -m pip install '.[browser]'
 python -m playwright install chromium
 # Download the official runtime ZIP linked below. The adapter verifies its exact hash.
 dcc-mcp-filmcraft serve --runtime-zip /path/to/filmcraft-web-0.7.2.zip
@@ -78,6 +78,11 @@ dcc-mcp-filmcraft serve --mode native \
   --native-cli /path/to/filmcraft-cli --workspace /path/to/filmcraft-work
 ```
 
+The base Python package needs no Playwright or Chromium installation. Browser
+mode remains available through the `browser` extra. Select the interpreter
+through the existing DCC-MCP Runtime/launcher configuration; this adapter does
+not install a second Python runtime.
+
 This launches the official CLI as one persistent native engine over a private
 stdin/stdout pipe. It opens no window and no TCP control endpoint. The workspace
 is trusted launcher configuration; each session creates a new private directory.
@@ -85,11 +90,13 @@ Agent tools receive only owned virtual handles and immutable artifact IDs, never
 an arbitrary OS-file API. Saved `.fcproj`, media and exports remain on disk when
 the adapter closes. Unsaved in-memory edits end with the owned process.
 
-Use the official FilmCraft 0.7.2 CLI. The acceptance job verifies both the Linux
+Use the official FilmCraft 0.7.2 or 0.12.0 CLI. The acceptance job verifies both the Linux
 release archive and executable SHA-256 before use; the adapter never downloads a
 runtime. The configured executable is trusted code, not an OS-sandboxed plugin.
-Only Linux native runtime behavior is currently qualified; platform unit tests do
-not establish actual macOS/Windows native-host coverage.
+The earlier Linux baseline is 0.7.2; the current CI pins 0.12.0. Windows 0.12.0
+also passed the full headless video/audio workflow and the bounded PhotoCraft
+PNG import, native save/reopen and H.264 export workflow. Platform unit tests
+alone do not establish native-host coverage; macOS and desktop GUI remain unqualified.
 
 MCP clients receive `filmcraft-native` instead of `filmcraft-browser`. The same 18
 editing/artifact operations are available. `filmcraft_capture_view` is absent:
@@ -104,6 +111,17 @@ before publishing artifact bytes. This is not a sandbox for hostile concurrent
 writers; keep the workspace operator-controlled.
 
 [Native workflow, bounds and exact mode comparison](docs/native-mode.md).
+
+If `--native-cli` is omitted, native mode checks `FILMCRAFT_CLI`, PATH, then the
+official Craft Launcher's `installed.json` and native installation trees.
+`FILMCRAFT_LAUNCHER_DATA` can select an absolute portable Launcher data root.
+An invalid explicit CLI setting fails rather than selecting another program.
+`dcc-mcp-filmcraft status` reports discovery without starting any process.
+These paths are location hints; the operator must verify the official runtime
+before execution. Discovery does not install, update or unpack AppImages, and
+does not establish a desktop window's identity or control authority.
+
+[Ecosystem boundaries and package readiness](docs/ecosystem-integration.md).
 
 ## Use in the editor's origin
 

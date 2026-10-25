@@ -44,10 +44,12 @@ Typed disconnect returns BUSY while any owned export is active; cancel or poll u
 
 ## Reproducible native proof
 
-The official v0.7.2 Linux x86_64 archive is [published by FilmCraft](https://github.com/storytold/filmcraft/releases/tag/v0.7.2). Both checksums are verified by the opt-in CI helper before execution:
+The native qualification target is the official [FilmCraft v0.12.0 release](https://github.com/storytold/filmcraft/releases/tag/v0.12.0), source commit `274c4cf85ba638d4b6f867d97ca3f6478a993c8d`. The opt-in CI helper verifies the published archive and extracted executable before execution:
 
-- Archive SHA-256: `4171c4bf5f57fd29475655f8a6df4719feda8c8f3ed95b2475d8dc112ad3be86`
-- CLI SHA-256: `33129b52859e83106b027d41fcbc65d994bb0b5db32cf1ad2b3187bd547c498c`
+- Archive SHA-256: `ddff0a2ec0d89e5e9e65644ed724b5b79959600b1602fd4ea6653b5a54bf88fd`, matching the release API digest and `SHA256SUMS.txt`.
+- CLI SHA-256: `05982fe44214f6174ffb54166d100e2362cf90811f2480235f3ecbaa0a3a75c2`, independently computed from `filmcraft-0.12.0-linux-x86_64/bin/filmcraft-cli` inside that verified archive.
+
+The previous real acceptance baseline remains v0.7.2 (archive `4171c4bf5f57fd29475655f8a6df4719feda8c8f3ed95b2475d8dc112ad3be86`, CLI `33129b52859e83106b027d41fcbc65d994bb0b5db32cf1ad2b3187bd547c498c`). The native handshake accepts exactly v0.7.2 and v0.12.0, requires a supported negotiated MCP protocol and tools capability, and reports the actual version/protocol in `inspect`. Identity checks do not authenticate binary provenance. Other versions, including prereleases, are rejected until separately reviewed; browser mode retains its own v0.7.2 ZIP pin.
 
 ```sh
 python -m pip install -e '.[dev]'
@@ -56,7 +58,9 @@ python tests/mcp-e2e.py --mode native --native-cli runtime/filmcraft-cli --outpu
 FILMCRAFT_NATIVE_CLI="$PWD/runtime/filmcraft-cli" python -m pytest tests/python/test_native.py
 ```
 
-FFmpeg/ffprobe must already be installed. The test creates original one-second calibration footage/audio, invokes genuine MCP through Core, saves/reopens the native project, and validates 50% retimed video/audio exports. It checks every source frame is repeated twice (12→24 frames), duration approximately two seconds and 440→220 Hz linked audio. Native cancellation must reach a real terminal cancelled state, and cancelled output cannot become an artifact. Unit/fake-host tests are not counted as real native acceptance. Linux is the actual tested host platform; macOS and Windows host runs remain separate work.
+FFmpeg/ffprobe must already be installed. The test creates original one-second calibration footage/audio, invokes genuine MCP through Core, saves/reopens the native project, and validates 50% retimed video/audio exports. It checks every source frame is repeated twice (12→24 frames), duration approximately two seconds and 440→220 Hz linked audio. Native cancellation must reach a real terminal cancelled state, and cancelled output cannot become an artifact. Unit/fake-host tests are not counted as real native acceptance. A successful current CI native job is required to qualify Linux v0.12.0; the source change alone is not a host result.
+
+Windows v0.12.0 portable archive SHA-256 `6732c6151e532eaa548d8039740091db813730e7112fdf3ab2837a1cf0ad0c3a` matched the official release API and SHA256SUMS. Extracted CLI SHA-256 is `6c96c1187a1aca20f3ec94dad9cdea2dfa218e094120f77cf257aca4a4adc3ec`. The actual owned CLI negotiated MCP 2025-03-26 and discovered 701 commands. The full video/audio MCP workflow passed 59 checks. A separate actual PhotoCraft PNG handoff passed 70 checks over 32 MCP calls: unchanged 960×640 RGB input bytes, imported native bytes, `.fcproj` save/reopen and 150-frame H.264 output. The predeclared decoded RGB MAE limit was 18; observed first/middle/last values were 1.486/1.045/1.044. This proves the bounded opaque untagged workflow, not automatic profile assignment, alpha preservation, OCIO, cross-restart relinking or the complete consumer contract. macOS native and desktop GUI remain unqualified.
 
 ## Desktop GUI findings and remaining work
 

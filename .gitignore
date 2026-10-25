@@ -3,6 +3,7 @@ evidence/
 __pycache__/
 *.tgz
 .venv/
+.venv-package/
 dist/
 .pytest_cache/
 .ruff_cache/

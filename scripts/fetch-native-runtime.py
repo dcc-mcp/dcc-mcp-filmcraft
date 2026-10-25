@@ -6,9 +6,10 @@ import tarfile
 from pathlib import Path
 from urllib.request import urlopen
 
-URL = "https://github.com/storytold/filmcraft/releases/download/v0.7.2/filmcraft-0.7.2-linux-x86_64.tar.gz"
-ARCHIVE_SHA256 = "4171c4bf5f57fd29475655f8a6df4719feda8c8f3ed95b2475d8dc112ad3be86"
-CLI_SHA256 = "33129b52859e83106b027d41fcbc65d994bb0b5db32cf1ad2b3187bd547c498c"
+VERSION = "0.12.0"
+URL = f"https://github.com/storytold/filmcraft/releases/download/v{VERSION}/filmcraft-{VERSION}-linux-x86_64.tar.gz"
+ARCHIVE_SHA256 = "ddff0a2ec0d89e5e9e65644ed724b5b79959600b1602fd4ea6653b5a54bf88fd"
+CLI_SHA256 = "05982fe44214f6174ffb54166d100e2362cf90811f2480235f3ecbaa0a3a75c2"
 
 
 def main():
@@ -20,7 +21,7 @@ def main():
     if hashlib.sha256(archive).hexdigest() != ARCHIVE_SHA256:
         raise RuntimeError("official native archive SHA-256 mismatch")
     with tarfile.open(fileobj=io.BytesIO(archive), mode="r:gz") as bundle:
-        member = bundle.getmember("filmcraft-0.7.2-linux-x86_64/bin/filmcraft-cli")
+        member = bundle.getmember(f"filmcraft-{VERSION}-linux-x86_64/bin/filmcraft-cli")
         if not member.isfile() or member.size > 80 * 1024 * 1024:
             raise RuntimeError("unexpected official native CLI archive member")
         stream = bundle.extractfile(member)
