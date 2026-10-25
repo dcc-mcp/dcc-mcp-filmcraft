@@ -12,17 +12,22 @@ import time
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from mcp_evidence import McpEvidence
 
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument('--runtime-zip', type=Path)
 parser.add_argument('--mode', choices=['browser', 'native'], default='browser')
 parser.add_argument('--native-cli', type=Path)
+parser.add_argument('--intentional-native-restart', action='store_true')
 parser.add_argument('--chromium')
 parser.add_argument('--output', type=Path, default=ROOT/'evidence/mcp')
 args = parser.parse_args()
+if args.intentional_native_restart and args.mode != 'native':
+    parser.error('--intentional-native-restart is native-only')
 args.output.mkdir(parents=True, exist_ok=True)
 report = {'checks': [], 'mode': args.mode, 'transport': 'genuine MCP stdio', 'core_version': __import__('dcc_mcp_core').__version__}
+evidence = McpEvidence(report, args.output)
 
 
 def check(ok, name, detail=None):
@@ -52,19 +57,21 @@ async def main():
     with (args.output/'stderr.log').open('w') as errlog:
         async with stdio_client(params, errlog=errlog) as (reader, writer):
             async with ClientSession(reader, writer) as client:
-                initialized = await client.initialize()
+                async def tool_rpc(name, parameters):
+                    return await evidence.capture('tools/call',{'name':name,'arguments':parameters},lambda:client.call_tool(name,parameters))
+                initialized = await evidence.capture('initialize',{},client.initialize)
                 report['protocol'] = initialized.protocolVersion
-                tools = (await client.list_tools()).tools
+                tools = (await evidence.capture('tools/list',{},client.list_tools)).tools
                 expected_count=18 if args.mode=='native' else 19
                 check(len(tools)==expected_count,str(expected_count)+' typed Core-backed tools listed',[x.name for x in tools])
                 check(all(x.inputSchema.get('additionalProperties') is False for x in tools),'all tool schemas reject extra properties')
-                prompts=(await client.list_prompts()).prompts
+                prompts=(await evidence.capture('prompts/list',{},client.list_prompts)).prompts
                 skill='filmcraft-native' if args.mode=='native' else 'filmcraft-browser'
                 check([p.name for p in prompts]==[skill],'mode-specific MCP skill prompt discoverable')
-                prompt=await client.get_prompt(skill)
+                prompt=await evidence.capture('prompts/get',{'name':skill},lambda:client.get_prompt(skill))
                 check('TIMEOUT' in prompt.messages[0].content.text,'skill prompt delivers safety workflow')
                 async def call(name, parameters=None):
-                    result = await client.call_tool('filmcraft_'+name, parameters or {})
+                    result = await tool_rpc('filmcraft_'+name, parameters or {})
                     check(not result.isError,'MCP '+name+' succeeds',result.structuredContent if result.isError else None)
                     return result.structuredContent['result']
                 async def artifact(meta, filename):
@@ -76,7 +83,7 @@ async def main():
                     check(hashlib.sha256(data).hexdigest()==meta['sha256'],'artifact checksum '+filename)
                     (args.output/filename).write_bytes(data)
                 for name, parameters in [('execute_code',{'code':'return 1'}),('inspect',{'code':'arbitrary'}),('set_playback_rate',{'sequence':1,'clip':1,'percent':True})]:
-                    result=await client.call_tool('filmcraft_'+name,parameters)
+                    result=await tool_rpc('filmcraft_'+name,parameters)
                     check(result.isError,'rejected '+name+' invalid call')
                 await call('create_project',{'name':'FilmCraft through real MCP'})
                 imported=await call('import_media',{'name':'source.mp4','data':base64.b64encode(source.read_bytes()).decode()})
@@ -95,6 +102,14 @@ async def main():
                 await call('reopen_project',{'path':saved['path']})
                 reopened=await call('inspect_sequence',{'sequence':sequence})
                 check(reopened['name']==retimed['name'] and reopened['durationFrames']==retimed['durationFrames'],'native reopen preserves edit and timing')
+                if args.intentional_native_restart:
+                    restarted=await call('reopen_project',{'path':saved['path'],'restart_native':True})
+                    transition=restarted['intentional_restart']
+                    report['intentional_native_restart']=transition
+                    check(transition['completed'] and transition['old_child_exited'] and transition['generation']==2 and transition['runtime_identity_unchanged'],'owned native child exits before explicit same-save restart',transition)
+                    fresh=await call('inspect_sequence',{'sequence':sequence})
+                    persistent=('id','settings','duration','durationFrames','video','audio','markers')
+                    check({key:fresh[key] for key in persistent}=={key:reopened[key] for key in persistent},'fresh owned native child retains same saved sequence and media timing')
                 for fmt,filename in [('h264','export.mp4'),('wav','export.wav')]:
                     job=await call('export_media',{'name':'mcp-'+fmt,'sequence':sequence,'format':fmt})
                     deadline=time.monotonic()+120
@@ -115,11 +130,11 @@ async def main():
                     if time.monotonic()>deadline:raise TimeoutError('cancelled export did not settle')
                     await asyncio.sleep(.1)
                 check(record.get('result',{}).get('error')=='cancelled','MCP cancellation reaches native terminal cancelled state',record)
-                rejected=await client.call_tool('filmcraft_read_export',{'path':cancelled['path']})
+                rejected=await tool_rpc('filmcraft_read_export',{'path':cancelled['path']})
                 check(rejected.isError,'cancelled export cannot become an artifact')
                 await call('reconcile')
                 if args.mode=='native':
-                    rejected=await client.call_tool('filmcraft_capture_view',{})
+                    rejected=await tool_rpc('filmcraft_capture_view',{})
                     check(rejected.isError,'native headless does not impersonate a GUI screenshot')
                 else:
                     await artifact(await call('capture_view'),'visible-editor.png')
@@ -152,5 +167,5 @@ async def main():
 try:
     asyncio.run(main())
 finally:
-    (args.output/'mcp-report.json').write_text(json.dumps(report,indent=2))
-print(json.dumps({'passed':report.get('passed',False),'checks':len(report['checks']),'output':str(args.output)}))
+    evidence.persist()
+print(json.dumps({'passed':report.get('passed',False),'checks':len(report['checks']),'output':str(args.output),'mcp_call_summary':report['mcp_call_summary'],'intentional_native_restart':report.get('intentional_native_restart')}))

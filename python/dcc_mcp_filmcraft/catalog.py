@@ -110,4 +110,10 @@ def tools_for_mode(mode):
     }
     for spec in tools:
         spec["description"] = descriptions.get(spec["operation"], spec["description"])
+        if spec["operation"] == "reopen_project":
+            spec["description"] += (
+                " restart_native=true explicitly ends a healthy owned child and opens this verified save "
+                "in a new owned native child; never recovers process loss."
+            )
+            spec["input_schema"]["properties"]["restart_native"] = {"type": "boolean", "default": False}
     return tools

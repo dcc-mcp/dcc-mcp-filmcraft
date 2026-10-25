@@ -21,6 +21,14 @@ operator-selected DCC-MCP Runtime interpreter; do not install another runtime.
 3. Save a new `.fcproj` and retrieve its immutable artifact. Reopen only an
    unchanged save from this session. Imported media remains in the session
    directory; a `.fcproj` alone does not contain the original media.
+   For native 0.12.0 only, explicitly pass `restart_native: true` to end the
+   healthy owned child and reopen that exact verified save in a new owned child.
+   First save all edits and wait until every owned export is terminal. Save and
+   all imported media hashes, workspace identity and runtime identity must match;
+   unknown state revokes the session without replay. The default is same-process.
+   The receipt confirms old-child exit and reports the new child generation.
+   This is not loss recovery, arbitrary import or a cross-machine bundle. Old
+   jobs retain terminal receipts; use newly returned opaque job IDs for new work.
 4. Queue one native H.264/MP4 or WAV output at a time. Exports are limited to
    60 seconds, 1800 frames and 500 million pixel-frames; audio is mono/stereo
    at at most 48 kHz. Poll the owned job until terminal and

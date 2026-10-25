@@ -105,6 +105,17 @@ its screenshot operation are unchanged. Process loss permanently revokes the
 native session; cached artifacts can still be rescued, but a replacement process
 never inherits permission to continue an uncertain edit.
 
+For the reviewed native 0.12.0 runtime, `filmcraft_reopen_project` also accepts
+`restart_native: true`. This explicitly closes a healthy owned child before a
+new owned child opens the same verified save in the retained private workspace.
+The current project must be clean, every owned export terminal, and the save,
+all imported media, workspace identity and executable unchanged. The new child
+must report the original runtime identity. Any uncertainty permanently revokes
+execution; it never triggers another launch. The default remains same-process
+reopen. Browser mode rejects this native-only parameter. This is intentional
+restart, not process-loss recovery or arbitrary project import. Its new native
+qualification is pending the exact-head Linux CI run.
+
 Native file reads bind the opened descriptor to the inspected file, recheck the
 session directory and reject observed replacement or changes during the read
 before publishing artifact bytes. This is not a sandbox for hostile concurrent

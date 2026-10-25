@@ -62,6 +62,7 @@ class SessionHarness(NativeSession):
     def __init__(self, workspace):
         super().__init__("/not-executed/filmcraft-cli", workspace=workspace)
         self.session_dir.mkdir(parents=True, mode=0o700)
+        self._workspace_identity = self._identity(self.workspace.lstat())
         self._directory_identity = self._identity(self.session_dir.lstat())
         self._process = self._original_process = FakeProcess()
         self._started = True
@@ -291,6 +292,14 @@ def test_real_native_lifecycle(tmp_path):
             reopened = (await s.call("reopen_project", {"path": snapshot["path"]}))["result"]
             assert reopened["name"] == "proof"
             assert reopened["dirty"] is False
+            if s.capabilities["intentional_restart"]:
+                old_child = s._original_process
+                restarted = (await s.call("reopen_project", {"path": snapshot["path"], "restart_native": True}))[
+                    "result"
+                ]
+                assert old_child.returncode is not None and s._original_process is not old_child
+                assert restarted["name"] == "proof" and restarted["dirty"] is False
+                assert restarted["intentional_restart"]["generation"] == 2
             await s.call("disconnect", {})
             assert (
                 await s.call(

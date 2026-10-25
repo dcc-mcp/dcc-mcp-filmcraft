@@ -1,7 +1,7 @@
 name: CI
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feat/storytold-native-refresh]
   push:
     branches: [main]
 permissions:
@@ -43,7 +43,9 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: python tests/browser-e2e.py
       - name: Download pinned official runtime
-        run: python -c "from urllib.request import urlretrieve; urlretrieve('https://github.com/storytold/filmcraft/releases/download/v0.7.2/filmcraft-web-0.7.2.zip', 'runtime.zip')"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download v0.7.2 --repo storytold/filmcraft --pattern filmcraft-web-0.7.2.zip --output runtime.zip
       - run: python tests/mcp-e2e.py --runtime-zip runtime.zip
       - run: python tests/mcp-lifecycle.py --runtime-zip runtime.zip
       - uses: actions/upload-artifact@v4
@@ -85,10 +87,10 @@ jobs:
       - run: python -m pip install -e ".[dev]"
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: python scripts/fetch-native-runtime.py
-      - name: Verify actual native lifecycle and loss recovery
+      - name: Verify owned native lifecycle, intentional restart and loss revocation
         run: FILMCRAFT_NATIVE_CLI="$PWD/runtime/filmcraft-cli" python -m pytest tests/python/test_native.py
       - name: Create, edit, save, reopen and export through genuine Core MCP
-        run: python tests/mcp-e2e.py --mode native --native-cli runtime/filmcraft-cli --output evidence/native
+        run: python tests/mcp-e2e.py --mode native --native-cli runtime/filmcraft-cli --intentional-native-restart --output evidence/native
       - name: Validate bounded PNG handoff through native Core MCP
         run: python scripts/photocraft_handoff_e2e.py --native-cli runtime/filmcraft-cli --expected-cli-sha256 05982fe44214f6174ffb54166d100e2362cf90811f2480235f3ecbaa0a3a75c2 --output evidence/photocraft-handoff
       - uses: actions/upload-artifact@v4

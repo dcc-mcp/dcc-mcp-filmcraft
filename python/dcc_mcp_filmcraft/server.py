@@ -23,7 +23,9 @@ def build_server(adapter):
                 outputSchema=row["output_schema"],
                 annotations=types.ToolAnnotations(
                     readOnlyHint=specs[row["name"]]["read_only"],
-                    destructiveHint=False,
+                    destructiveHint=(
+                        adapter.mode == "native-headless" and specs[row["name"]]["operation"] == "reopen_project"
+                    ),
                     idempotentHint=specs[row["name"]]["read_only"],
                     openWorldHint=False,
                 ),
