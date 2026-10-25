@@ -344,6 +344,7 @@ class NativeSession:
                 raise NativeError("RUNTIME", "native executable differs from the original child")
             self._guard()
             identity = self._runtime_identity
+            old_pid = self._original_process.pid
             self._archived_jobs.update(
                 {
                     alias: copy.deepcopy(by_id[alias])
@@ -374,8 +375,12 @@ class NativeSession:
                     "completed": True,
                     "old_child_exited": True,
                     "old_child_exit_code": old_exit,
+                    "old_child_pid": old_pid,
+                    "new_child_pid": self._original_process.pid,
                     "generation": self._generation,
                     "runtime_identity_unchanged": True,
+                    "runtime_identity": {"name": identity[0], "version": identity[1], "protocol": identity[2]},
+                    "cli_sha256": self._runtime_fingerprint[1],
                 },
             }
         except BaseException:

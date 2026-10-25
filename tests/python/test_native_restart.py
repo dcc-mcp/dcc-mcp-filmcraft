@@ -61,6 +61,14 @@ def test_explicit_restart_ends_old_child_then_reopens_exact_save_and_media(launc
             assert result["path"] == saved["path"] and result["dirty"] is False
             assert result["intentional_restart"]["old_child_exited"] is True
             assert result["intentional_restart"]["generation"] == 2
+            assert result["intentional_restart"]["old_child_pid"] == processes[0].pid
+            assert result["intentional_restart"]["new_child_pid"] == processes[1].pid
+            assert result["intentional_restart"]["runtime_identity"] == {
+                "name": "filmcraft",
+                "version": "0.12.0",
+                "protocol": "2025-03-26",
+            }
+            assert result["intentional_restart"]["cli_sha256"] == session._runtime_fingerprint[1]
             assert session.capabilities["intentional_restart"] is True
             assert session.capabilities["restart_recovery"] is False
             assert before == {name: (session.session_dir / name).read_bytes() for name in before}
