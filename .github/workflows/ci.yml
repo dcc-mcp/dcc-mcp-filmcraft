@@ -89,9 +89,13 @@ jobs:
         run: FILMCRAFT_NATIVE_CLI="$PWD/runtime/filmcraft-cli" python -m pytest tests/python/test_native.py
       - name: Create, edit, save, reopen and export through genuine Core MCP
         run: python tests/mcp-e2e.py --mode native --native-cli runtime/filmcraft-cli --output evidence/native
+      - name: Validate bounded PNG handoff through native Core MCP
+        run: python scripts/photocraft_handoff_e2e.py --native-cli runtime/filmcraft-cli --expected-cli-sha256 05982fe44214f6174ffb54166d100e2362cf90811f2480235f3ecbaa0a3a75c2 --output evidence/photocraft-handoff
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: filmcraft-native-evidence
-          path: evidence/native/
+          path: |
+            evidence/native/
+            evidence/photocraft-handoff/
           retention-days: 14

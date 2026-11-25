@@ -17,6 +17,43 @@ def run(coro):
     return asyncio.run(coro)
 
 
+@pytest.mark.parametrize("version", ["0.7.2", "0.12.0"])
+def test_native_initialization_accepts_only_reviewed_versions(version):
+    info = {"name": "filmcraft", "version": version}
+    assert (
+        NativeSession._validate_initialization(
+            {"protocolVersion": "2025-03-26", "serverInfo": info, "capabilities": {"tools": {}}}
+        )
+        == info
+    )
+
+
+@pytest.mark.parametrize(
+    "replace",
+    [
+        {"protocolVersion": "2099-01-01"},
+        {"protocolVersion": []},
+        {"serverInfo": {"name": "other", "version": "0.12.0"}},
+        {"serverInfo": {"name": "filmcraft", "version": "0.13.0"}},
+        {"serverInfo": {"name": "filmcraft", "version": "0.12.0-beta.1"}},
+        {"serverInfo": {"name": "filmcraft", "version": []}},
+        {"serverInfo": None},
+        {"capabilities": {}},
+        {"capabilities": {"tools": True}},
+        {"capabilities": None},
+    ],
+)
+def test_native_initialization_rejects_wrong_identity_or_protocol(replace):
+    initialized = {
+        "protocolVersion": "2025-03-26",
+        "serverInfo": {"name": "filmcraft", "version": "0.12.0"},
+        "capabilities": {"tools": {}},
+        **replace,
+    }
+    with pytest.raises(NativeError):
+        NativeSession._validate_initialization(initialized)
+
+
 class FakeProcess:
     returncode = None
 
@@ -175,7 +212,12 @@ def test_owned_file_symlink_is_never_read(native, tmp_path):
     secret = tmp_path / "secret"
     secret.write_bytes(b"must not read")
     native._reserved.add("pretend.fcproj")
-    (native.session_dir / "pretend.fcproj").symlink_to(secret)
+    try:
+        (native.session_dir / "pretend.fcproj").symlink_to(secret)
+    except OSError as exc:
+        if os.name == "nt" and getattr(exc, "winerror", None) == 1314:
+            pytest.skip("Windows user cannot create the symlink fixture")
+        raise
     with pytest.raises(NativeError, match="symbolic link"):
         native._read_owned("pretend.fcproj", 1024)
 

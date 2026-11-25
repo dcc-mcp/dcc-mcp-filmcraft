@@ -71,7 +71,15 @@ class BrowserSession:
         self._pipe = None
 
     async def start(self):
-        from playwright.async_api import async_playwright
+        try:
+            from playwright.async_api import async_playwright
+        except ModuleNotFoundError as exc:
+            if exc.name not in {"playwright", "playwright.async_api"}:
+                raise
+            raise BrowserError(
+                "RUNTIME",
+                "browser mode requires the dcc-mcp-filmcraft[browser] extra and an installed Chromium runtime",
+            ) from exc
 
         files = runtime_files(self.archive)
         session = self

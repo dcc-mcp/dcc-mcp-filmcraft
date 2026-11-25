@@ -1,0 +1,172 @@
+name: Release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing reviewed tag (vMAJOR.MINOR.PATCH); this workflow creates no tag
+        required: true
+        type: string
+      expected_commit:
+        description: Approved full lowercase commit SHA
+        required: true
+        type: string
+      ci_run_id:
+        description: Successful main-push CI run for that exact commit
+        required: true
+        type: string
+      publish:
+        description: Upload the verified artifacts to PyPI after environment approval
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: filmcraft-pypi-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Verify release source and build distributions
+    if: ${{ github.repository == 'dcc-mcp/dcc-mcp-filmcraft' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      commit: ${{ steps.admission.outputs.commit }}
+      version: ${{ steps.admission.outputs.version }}
+      tag: ${{ steps.admission.outputs.tag }}
+      publish: ${{ steps.admission.outputs.publish }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          path: automation
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Admit the exact reviewed source and CI
+        id: admission
+        working-directory: automation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_COMMIT: ${{ inputs.expected_commit }}
+          CI_RUN_ID: ${{ inputs.ci_run_id }}
+          PUBLISH_REQUESTED: ${{ inputs.publish }}
+        run: |
+          args=(--tag "$RELEASE_TAG" --commit "$RELEASE_COMMIT" --ci-run-id "$CI_RUN_ID")
+          if [[ "$PUBLISH_REQUESTED" == "true" ]]; then args+=(--publish); fi
+          python scripts/check_release_candidate.py "${args[@]}"
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ steps.admission.outputs.commit }}
+          persist-credentials: false
+          path: candidate
+      - name: Build and check wheel and sdist without OIDC
+        working-directory: candidate
+        run: |
+          python -m pip install build twine
+          python -m build
+          python -m twine check dist/*
+      - name: Inspect exact artifacts and write their immutable manifest
+        env:
+          RELEASE_TAG: ${{ steps.admission.outputs.tag }}
+          RELEASE_COMMIT: ${{ steps.admission.outputs.commit }}
+        run: |
+          mkdir -p release-bundle/dist
+          cp candidate/dist/* release-bundle/dist/
+          python automation/scripts/check_release_candidate.py --tag "$RELEASE_TAG" --commit "$RELEASE_COMMIT" --inspect-dist release-bundle/dist --manifest release-bundle/release-manifest.json
+      - name: Smoke the installed base wheel without a browser or host
+        env:
+          EXPECTED_VERSION: ${{ steps.admission.outputs.version }}
+          DCC_MCP_DISABLE_DEFAULT_SKILL_PATHS: '1'
+          DCC_MCP_LOG_DIR: ${{ runner.temp }}/filmcraft-release-smoke-logs
+          FILMCRAFT_LAUNCHER_DATA: ${{ runner.temp }}/filmcraft-release-empty-launcher
+        run: |
+          python -m venv smoke
+          smoke/bin/python -m pip install release-bundle/dist/*.whl
+          smoke/bin/python -m pip check
+          smoke/bin/python - <<'PY'
+          import importlib.metadata as metadata
+          import importlib.resources as resources
+          import importlib.util
+          import os
+          assert metadata.version('dcc-mcp-filmcraft') == os.environ['EXPECTED_VERSION']
+          assert importlib.util.find_spec('playwright') is None
+          import dcc_mcp_filmcraft
+          assert dcc_mcp_filmcraft.__version__ == os.environ['EXPECTED_VERSION']
+          root = resources.files('dcc_mcp_filmcraft')
+          for mode in ('filmcraft-browser', 'filmcraft-native'):
+              assert root.joinpath('skills', mode, 'SKILL.md').is_file()
+              assert root.joinpath('skills', mode, 'tools.yaml').is_file()
+          for asset in ('index.js', 'mcp-bridge.js'):
+              assert root.joinpath('assets', asset).is_file()
+          assert any(ep.name == 'filmcraft' for ep in metadata.entry_points(group='dcc_mcp.adapters'))
+          PY
+          test "$(smoke/bin/dcc-mcp-filmcraft --version)" = "$EXPECTED_VERSION"
+          smoke/bin/dcc-mcp-filmcraft status
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: filmcraft-dist-${{ steps.admission.outputs.commit }}
+          path: release-bundle/
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish the approved current-run distributions
+    needs: build
+    if: ${{ inputs.publish && needs.build.outputs.publish == 'true' && github.ref == 'refs/heads/main' && github.repository == 'dcc-mcp/dcc-mcp-filmcraft' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/p/dcc-mcp-filmcraft
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: filmcraft-dist-${{ needs.build.outputs.commit }}
+          path: release-bundle
+      - name: Verify the same-run artifact manifest before OIDC upload
+        env:
+          RELEASE_COMMIT: ${{ needs.build.outputs.commit }}
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          root = Path('release-bundle')
+          manifest = json.loads((root / 'release-manifest.json').read_text())
+          assert manifest['project'] == 'dcc-mcp-filmcraft'
+          assert manifest['commit'] == os.environ['RELEASE_COMMIT']
+          assert manifest['tag'] == os.environ['RELEASE_TAG']
+          assert manifest['version'] == os.environ['RELEASE_VERSION']
+          expected = {f"dcc_mcp_filmcraft-{manifest['version']}-py3-none-any.whl", f"dcc_mcp_filmcraft-{manifest['version']}.tar.gz"}
+          assert len(manifest['artifacts']) == 2
+          assert {entry['name'] for entry in manifest['artifacts']} == expected
+          assert {path.name for path in (root / 'dist').iterdir()} == expected
+          for entry in manifest['artifacts']:
+              path = root / 'dist' / entry['name']
+              assert path.is_file() and not path.is_symlink()
+              assert path.stat().st_size == entry['size']
+              assert hashlib.sha256(path.read_bytes()).hexdigest() == entry['sha256']
+          PY
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: release-bundle/dist/
+          skip-existing: false

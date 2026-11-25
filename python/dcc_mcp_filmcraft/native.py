@@ -23,8 +23,10 @@ MAX_RPC = 4 * 1024 * 1024
 MAX_EXPORT_SECONDS = 60
 MAX_EXPORT_FRAMES = 1800
 MAX_EXPORT_PIXEL_FRAMES = 500_000_000
-NATIVE_VERSION = "0.7.2"
-NATIVE_LINUX_CLI_SHA256 = "33129b52859e83106b027d41fcbc65d994bb0b5db32cf1ad2b3187bd547c498c"
+NATIVE_VERSION = "0.12.0"
+NATIVE_VERSIONS = frozenset({"0.7.2", NATIVE_VERSION})
+NATIVE_LINUX_CLI_SHA256 = "05982fe44214f6174ffb54166d100e2362cf90811f2480235f3ecbaa0a3a75c2"
+NATIVE_PROTOCOLS = frozenset({"2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25", "2026-07-28"})
 NativeError = BrowserError
 
 
@@ -132,9 +134,7 @@ class NativeSession:
                 ),
                 timeout=20,
             )
-            info = initialized.get("serverInfo", {})
-            if info.get("name") != "filmcraft" or info.get("version") != NATIVE_VERSION:
-                raise NativeError("RUNTIME", "expected official FilmCraft MCP version 0.7.2")
+            info = self._validate_initialization(initialized)
             self._process.stdin.write(b'{"jsonrpc":"2.0","method":"notifications/initialized"}\n')
             await self._process.stdin.drain()
             catalog = await asyncio.wait_for(self._tool("command_list", {}), timeout=20)
@@ -143,11 +143,39 @@ class NativeSession:
             self._commands = {row.get("id") for row in catalog if isinstance(row, dict)}
             self._project = _key(await asyncio.wait_for(self._command("project.inspect"), timeout=20))
             self.capabilities["runtime_version"] = info["version"]
+            self.capabilities["mcp_protocol"] = initialized["protocolVersion"]
             self.capabilities["engine_command_count"] = len(self._commands)
             return self
         except BaseException:
             await self.close()
             raise
+
+    @staticmethod
+    def _validate_initialization(initialized):
+        """Validate negotiated identity before discovering or mutating a document.
+
+        Version identity is a compatibility check, not binary provenance. The
+        configured executable remains trusted operator input; the opt-in fetch
+        helper separately verifies the published archive and extracted CLI.
+        """
+        if (
+            not isinstance(initialized, dict)
+            or not isinstance(initialized.get("protocolVersion"), str)
+            or initialized["protocolVersion"] not in NATIVE_PROTOCOLS
+        ):
+            raise NativeError("PROTOCOL", "unsupported FilmCraft MCP protocol")
+        info = initialized.get("serverInfo")
+        if (
+            not isinstance(info, dict)
+            or info.get("name") != "filmcraft"
+            or not isinstance(info.get("version"), str)
+            or info.get("version") not in NATIVE_VERSIONS
+        ):
+            raise NativeError("RUNTIME", "expected FilmCraft MCP version 0.7.2 or 0.12.0")
+        capabilities = initialized.get("capabilities")
+        if not isinstance(capabilities, dict) or not isinstance(capabilities.get("tools"), dict):
+            raise NativeError("PROTOCOL", "FilmCraft MCP tools capability is missing")
+        return info
 
     @staticmethod
     def _identity(st):

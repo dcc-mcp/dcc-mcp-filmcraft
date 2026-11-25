@@ -7,7 +7,7 @@ Python 适配器通过 Core 0.20.44 和官方 MCP SDK 提供 stdio 协议。浏�
 ## 使用
 
 ```sh
-python -m pip install .
+python -m pip install '.[browser]'
 python -m playwright install chromium
 dcc-mcp-filmcraft serve --runtime-zip /path/to/filmcraft-web-0.7.2.zip
 ```
@@ -23,13 +23,20 @@ dcc-mcp-filmcraft serve --mode native \
   --native-cli /path/to/filmcraft-cli --workspace /path/to/filmcraft-work
 ```
 
-使用官方 FilmCraft 0.7.2 CLI，在一个持久化原生引擎中创建、导入、编辑、变速、撤销重做、保存和重开项目，以及导出视频/音频。它是无窗口的本地引擎，不等同于桌面 GUI。没有启动 TCP 控制端口。原生 MCP 提供 filmcraft-native 工作流和 18 个工具，不提供 filmcraft_capture_view；浏览器的 19 工具与截图能力保留。
+使用官方 FilmCraft 0.7.2 或 0.12.0 CLI，在一个持久化原生引擎中创建、导入、编辑、变速、撤销重做、保存和重开项目，以及导出视频/音频。它是无窗口的本地引擎，不等同于桌面 GUI。没有启动 TCP 控制端口。原生 MCP 提供 filmcraft-native 工作流和 18 个工具，不提供 filmcraft_capture_view；浏览器的 19 工具与截图能力保留。
+
+基础 Python 包无需 Playwright 或 Chromium；浏览器模式通过 `browser` extra 保留。
+解释器由现有 DCC-MCP Runtime/启动配置选择，本适配器不另建 Python 运行时安装器。
+省略 `--native-cli` 时，依次检查 `FILMCRAFT_CLI`、PATH 和官方 Craft Launcher
+的 `installed.json` 及原生安装目录。`FILMCRAFT_LAUNCHER_DATA` 可指定绝对路径的便携数据目录。
+显式路径无效时直接报错；`status` 只做文件系统发现，不启动程序。这些路径只是位置线索，
+运行前仍须核验官方来源；不会安装、更新或解包 AppImage，也不代表已绑定桌面窗口。
 
 启动参数中的工作目录由操作者指定，每个会话建立新的私有子目录。工具只接收本会话的虚拟路径和产物 ID。结束 stdio 后保留已保存的项目、导入媒体和导出文件；未保存的内存编辑随宿主进程结束。原生进程丢失后永久撤销执行，不会启动替代进程重放修改。
 
 原生文件读取会核对打开的文件描述符与已检查文件的身份，并重新检查会话目录；发现读取期间的文件替换或变化时，在发布产物字节前拒绝读取。这不是针对恶意并发写入者的沙箱，工作目录仍须由操作者控制。
 
-原生 CI 在执行前核验官方 Linux 发行包和 CLI 文件的 SHA-256；适配器不自动安装软件。当前真实原生宿主验收仅覆盖 Linux，跨平台单元测试不代表 macOS/Windows 宿主已实测。桌面 GUI 实际启动遇到云桌面 X11 共享内存绘制错误，尚未通过可用性/控制验收，也未接入适配器。[完整模式对照与边界](docs/native-mode.md)。
+原生 CI 在执行前核验官方 Linux 发行包和 CLI 文件的 SHA-256；适配器不自动安装软件。旧 Linux 基线为 0.7.2，当前 CI 固定 0.12.0。Windows 0.12.0 已通过完整无界面视频/音频工作流，以及 PhotoCraft PNG 导入、原生保存重开和 H.264 导出；macOS 原生和桌面 GUI 仍未验收。跨平台单元测试不能代替宿主实测。历史桌面 GUI 启动遇到云桌面 X11 共享内存绘制错误，尚未接入适配器。[完整模式对照与边界](docs/native-mode.md)。
 
 ## 已实现能力
 
@@ -52,6 +59,8 @@ Playwright 的私有管道连接固定页面函数；导航后永久撤销执行
 原生重开要求导入媒体仍在同一会话中；.fcproj 并非媒体打包文件。上游没有原子的版本比较并执行机制，工具工作时不要同时手动编辑。disconnect 只关闭类型化客户端并保留页面；终止 stdio 进程会关闭临时浏览器，请先读取所需产物。
 
 这是未发行的有边界集成，没有实现 Core 网关发现、桌面 TCP、WASI 或跨重启恢复。未创建上游 fork、新凭证、release、merge 或部署。[MCP 验收证据](docs/mcp-acceptance.md)；[浏览器边界](docs/browser-boundary.md)。
+
+[生态边界与包发布准备](docs/ecosystem-integration.md)。
 
 ## 验证
 
